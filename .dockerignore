@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.gitignore
+.env
+.env.*
+*.log
+.DS_Store
+uploads
+**/.vite
+**/coverage
+README.md
+.cursor
+agent-transcripts

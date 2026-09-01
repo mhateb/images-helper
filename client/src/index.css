@@ -1,0 +1,55 @@
+:root {
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Source Sans 3', 'Segoe UI', sans-serif;
+  --ink: #2a2d22;
+  --muted: #6d6a5c;
+  --accent: #55633a;
+  --accent-strong: #44512e;
+  --accent-ink: #f4f1e6;
+  --surface: #f7f4ec;
+  --line: rgba(55, 52, 40, 0.14);
+  --danger: #9a3d2f;
+  color: var(--ink);
+  background: #e7e2d4;
+  font-family: var(--font-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.45;
+  font-weight: 400;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button:focus-visible,
+[role='button']:focus-visible,
+[role='switch']:focus-visible,
+[role='radio']:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+img {
+  display: block;
+}

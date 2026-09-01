@@ -1,0 +1,220 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  padding: clamp(1.25rem, 4vw, 2.75rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(110, 122, 70, 0.18), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 0%, rgba(176, 140, 84, 0.14), transparent 50%),
+    linear-gradient(180deg, #f3efe4 0%, #e7e2d4 48%, #ddd6c5 100%);
+  z-index: -2;
+}
+
+.atmosphere::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgba(70, 62, 48, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(70, 62, 48, 0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at 50% 20%, black, transparent 75%);
+}
+
+.brand {
+  max-width: 1120px;
+  margin: 0 auto 1.75rem;
+  animation: brandIn 0.6s ease both;
+}
+
+.brandRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.brandMarkBtn {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.brandMarkBtn:hover .brandMark {
+  color: var(--accent-strong);
+}
+
+.brandMark {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 7vw, 4.4rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  color: var(--ink);
+  transition: color 0.18s ease;
+}
+
+.guideBtn {
+  flex-shrink: 0;
+  margin-top: 0.35rem;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.guideBtn:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.tagline {
+  margin: -0.75rem auto 1.25rem;
+  max-width: 1120px;
+  color: var(--muted);
+  font-size: clamp(1rem, 2.4vw, 1.15rem);
+  line-height: 1.45;
+}
+
+.main {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.hero {
+  display: grid;
+  place-items: center;
+  min-height: min(70vh, 560px);
+  padding-bottom: 2rem;
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  animation: rise 0.4s ease both;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.fileName {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.fileMeta {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.reset {
+  flex-shrink: 0;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reset:hover {
+  border-color: var(--accent);
+}
+
+.grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.previewCol {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.block {
+  padding: 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.blockHead h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.blockHead p {
+  margin: 0.35rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.error {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  background: color-mix(in srgb, var(--danger) 8%, white);
+  color: var(--danger);
+  border-radius: 2px;
+}
+
+@keyframes brandIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.8fr);
+    align-items: start;
+  }
+}

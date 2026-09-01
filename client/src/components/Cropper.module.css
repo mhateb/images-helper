@@ -1,0 +1,64 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.stage {
+  --crop-max-h: min(52vh, 480px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 260px;
+  max-height: var(--crop-max-h);
+  /* Room for ReactCrop drag handles that sit outside the image box. */
+  padding: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
+  background:
+    linear-gradient(45deg, #d8d4c8 25%, transparent 25%) 0 0 / 16px 16px,
+    linear-gradient(-45deg, #d8d4c8 25%, transparent 25%) 0 8px / 16px 16px,
+    linear-gradient(45deg, transparent 75%, #d8d4c8 75%) 8px -8px / 16px 16px,
+    linear-gradient(-45deg, transparent 75%, #d8d4c8 75%) -8px 0 / 16px 16px,
+    #efece3;
+  border-radius: 2px;
+}
+
+/* ReactCrop sets img { max-height: inherit } — height must be on this root. */
+.crop {
+  max-width: 100%;
+  max-height: calc(var(--crop-max-h) - 16px);
+}
+
+.crop :global(.ReactCrop__crop-selection) {
+  border-color: color-mix(in srgb, var(--accent) 85%, white);
+  box-shadow: 0 0 0 9999em rgba(42, 45, 34, 0.45);
+}
+
+.crop :global(.ReactCrop__drag-handle) {
+  width: 12px;
+  height: 12px;
+  background: var(--accent-ink);
+  border: 2px solid var(--accent);
+  box-shadow: none;
+}
+
+.crop :global(.ReactCrop__drag-bar) {
+  background: transparent;
+}
+
+.image {
+  display: block;
+  max-width: 100%;
+  max-height: inherit;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
