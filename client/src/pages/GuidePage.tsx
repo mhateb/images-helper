@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BP } from '../constants/breakpoints';
 import styles from './GuidePage.module.css';
 
 type TabId = 'basics' | 'source' | 'media' | 'srcset';
@@ -10,20 +11,13 @@ const TABS: { id: TabId; label: string; hint: string }[] = [
   { id: 'srcset', label: 'srcset', hint: 'Ширины и ресайз' },
 ];
 
-/** Брейкпоинты рабочего проекта — единый источник для примеров в гайде. */
-const BP = {
-  md: 768,
-  lg: 1024,
-  xl: 1280,
-} as const;
-
 export function GuidePage() {
   const [tab, setTab] = useState<TabId>('basics');
 
   return (
     <article className={styles.page}>
       <header className={styles.intro}>
-        <p className={styles.kicker}>Для фронтенда</p>
+        <p className={styles.kicker}>Документация</p>
         <h1>Гайд по оптимизации картинок для веба</h1>
         <p className={styles.lead}>
           Подготовка ассетов под{' '}

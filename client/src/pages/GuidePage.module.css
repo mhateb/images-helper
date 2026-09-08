@@ -1,37 +1,38 @@
 .page {
-  max-width: 720px;
+  max-width: 760px;
   margin: 0 auto;
-  padding-bottom: 3rem;
-  animation: rise 0.4s ease both;
+  padding: 0.5rem 0 3rem;
 }
 
 .intro {
   margin-bottom: 2rem;
+  text-align: center;
 }
 
 .kicker {
   margin: 0;
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-weight: 600;
-  color: var(--muted);
+  font-weight: 700;
+  color: var(--accent);
 }
 
 .intro h1 {
-  margin: 0.4rem 0 0;
-  font-family: var(--font-display);
-  font-size: clamp(1.85rem, 4.5vw, 2.6rem);
-  font-weight: 700;
-  line-height: 1.1;
+  margin: 0.75rem 0 0;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.15;
   letter-spacing: -0.02em;
   color: var(--ink);
 }
 
 .lead {
-  margin: 0.85rem 0 0;
+  margin: 0.85rem auto 0;
+  max-width: 640px;
   color: var(--muted);
-  font-size: 1.05rem;
+  font-size: 1rem;
   line-height: 1.5;
 }
 
@@ -40,8 +41,8 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--line);
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.55);
+  border-radius: var(--radius);
+  background: var(--surface);
   overflow: hidden;
 }
 
@@ -50,8 +51,8 @@
   grid-template-columns: 4.5rem 5.5rem 1fr;
   gap: 0.75rem;
   align-items: baseline;
-  padding: 0.65rem 0.9rem;
-  font-size: 0.92rem;
+  padding: 0.7rem 1rem;
+  font-size: 0.875rem;
   color: var(--muted);
   border-top: 1px solid var(--line);
 }
@@ -61,10 +62,10 @@
 }
 
 .bpToken {
-  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-weight: 700;
   color: var(--ink);
-  font-size: 0.88rem;
+  font-size: 0.8125rem;
 }
 
 .figure {
@@ -76,14 +77,14 @@
   width: 100%;
   height: auto;
   border: 1px solid var(--line);
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.55);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
 }
 
 .figure figcaption {
   margin: 0.55rem 0 0;
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.8125rem;
   line-height: 1.4;
 }
 
@@ -99,38 +100,41 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 0.15rem;
-  padding: 0.75rem 0.85rem;
+  padding: 0.8rem 0.95rem;
   border: 1px solid var(--line);
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.55);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
   color: var(--ink);
   text-align: left;
   cursor: pointer;
   transition:
-    border-color 0.18s ease,
-    background 0.18s ease,
-    transform 0.18s ease;
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .tab strong {
-  font-size: 0.98rem;
-  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
 }
 
 .tab span {
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   color: var(--muted);
   line-height: 1.3;
 }
 
 .tab:hover {
-  transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
 }
 
 .tabActive {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, white);
+  background: var(--accent-soft);
+}
+
+.tabActive strong {
+  color: var(--accent);
 }
 
 .panel {
@@ -144,8 +148,7 @@
 .sectionFirst h2,
 .section h2 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.45rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--ink);
 }
@@ -164,8 +167,7 @@
 
 .sub {
   margin: 1.25rem 0 0;
-  font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--ink);
 }
@@ -173,15 +175,15 @@
 .text {
   margin: 0.65rem 0 0;
   color: var(--muted);
-  font-size: 0.98rem;
-  line-height: 1.5;
+  font-size: 0.9375rem;
+  line-height: 1.55;
 }
 
 .steps {
   margin: 0.85rem 0 0;
   padding-left: 1.25rem;
   color: var(--muted);
-  font-size: 0.98rem;
+  font-size: 0.9375rem;
   line-height: 1.55;
   display: flex;
   flex-direction: column;
@@ -193,24 +195,25 @@
   padding: 1rem 1.1rem;
   overflow-x: auto;
   border: 1px solid var(--line);
-  border-radius: 2px;
-  background: rgba(42, 45, 34, 0.92);
-  color: #f0ebe0;
-  font-size: 0.86rem;
+  border-radius: var(--radius-sm);
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.8125rem;
   line-height: 1.45;
 }
 
 .snippet code {
-  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 .code {
-  padding: 0.08em 0.35em;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--accent) 12%, white);
-  color: var(--ink);
-  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 0.9em;
+  padding: 0.08em 0.4em;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  font-weight: 500;
 }
 
 .cards {
@@ -221,29 +224,29 @@
 }
 
 .card {
-  padding: 1.1rem 1.15rem;
+  padding: 1.25rem;
   border: 1px solid var(--line);
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.55);
+  border-radius: var(--radius);
+  background: var(--surface);
 }
 
 .card h3 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.2rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
   color: var(--ink);
 }
 
 .card p {
   margin: 0.5rem 0 0;
   color: var(--muted);
-  font-size: 0.95rem;
-  line-height: 1.45;
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .when {
-  padding-top: 0.55rem;
-  border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--line);
 }
 
 .when strong {
@@ -253,23 +256,24 @@
 
 .callout {
   margin-top: 1.15rem;
-  padding: 1rem 1.1rem;
+  padding: 1rem 1.15rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
   border-left: 3px solid var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, white);
 }
 
 .callout p {
   margin: 0;
   color: var(--ink);
-  font-size: 0.96rem;
-  line-height: 1.45;
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .list {
   margin: 0.7rem 0 0;
   padding-left: 1.2rem;
   color: var(--muted);
-  font-size: 0.96rem;
+  font-size: 0.9375rem;
   line-height: 1.5;
   display: flex;
   flex-direction: column;
@@ -287,35 +291,45 @@
   gap: 1.1rem;
 }
 
+.params > div {
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
 .params dt {
   margin: 0;
   font-weight: 700;
   color: var(--ink);
-  font-size: 1rem;
+  font-size: 0.9375rem;
 }
 
 .params dd {
   margin: 0.3rem 0 0;
   color: var(--muted);
-  font-size: 0.96rem;
-  line-height: 1.45;
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .checklist {
   margin: 0.85rem 0 0;
-  padding-left: 1.2rem;
+  padding: 1.15rem 1.15rem 1.15rem 2.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
   color: var(--muted);
-  font-size: 0.98rem;
+  font-size: 0.9375rem;
   line-height: 1.5;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.5rem;
 }
 
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;

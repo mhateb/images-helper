@@ -1,6 +1,24 @@
-import type { OptimizeParams, OptimizeResult } from '../types';
+import type {
+  ArtDirectionParams,
+  ArtDirectionResult,
+  BreakpointToken,
+  OptimizeParams,
+  OptimizeResult,
+} from '../types';
 
 type OptimizeAllParams = Omit<OptimizeParams, 'format'>;
+
+function appendCropFields(
+  form: FormData,
+  crop: OptimizeParams['crop'],
+  prefix = 'crop',
+) {
+  if (!crop) return;
+  form.append(`${prefix}X`, String(crop.x));
+  form.append(`${prefix}Y`, String(crop.y));
+  form.append(`${prefix}Width`, String(crop.width));
+  form.append(`${prefix}Height`, String(crop.height));
+}
 
 function appendOptimizeFields(
   form: FormData,
@@ -17,12 +35,7 @@ function appendOptimizeFields(
     form.append('resizeMaxWidth', String(params.resizeMaxWidth));
   }
 
-  if (params.crop) {
-    form.append('cropX', String(params.crop.x));
-    form.append('cropY', String(params.crop.y));
-    form.append('cropWidth', String(params.crop.width));
-    form.append('cropHeight', String(params.crop.height));
-  }
+  appendCropFields(form, params.crop);
 }
 
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
@@ -90,6 +103,99 @@ export async function downloadAllFormats(params: OptimizeAllParams): Promise<voi
   const link = document.createElement('a');
   link.href = url;
   link.download = `${base}.zip`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function sanitizeBaseName(fallbackFile: File | undefined, override?: string): string {
+  const raw = (
+    override?.trim() ||
+    fallbackFile?.name.replace(/\.[^.]+$/, '') ||
+    'image'
+  ).trim();
+  const cleaned = raw
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return cleaned || 'image';
+}
+
+const FILE_FIELD: Record<BreakpointToken, string> = {
+  md: 'imageMd',
+  lg: 'imageLg',
+  xl: 'imageXl',
+};
+
+const CROP_PREFIX: Record<BreakpointToken, string> = {
+  md: 'cropMd',
+  lg: 'cropLg',
+  xl: 'cropXl',
+};
+
+export async function generateArtDirection(
+  params: ArtDirectionParams,
+): Promise<ArtDirectionResult> {
+  if (!params.slots.xl?.file) {
+    throw new Error('Нужен исходник для xl.');
+  }
+
+  const baseName = sanitizeBaseName(params.slots.xl.file, params.baseName);
+  const form = new FormData();
+  form.append('trim', String(params.trim));
+  form.append('quality', String(params.quality));
+  form.append('baseName', baseName);
+
+  for (const token of ['md', 'lg', 'xl'] as BreakpointToken[]) {
+    const slot = params.slots[token];
+    if (!slot) continue;
+    form.append(FILE_FIELD[token], slot.file);
+    appendCropFields(form, slot.crop, CROP_PREFIX[token]);
+  }
+
+  const response = await fetch('/api/optimize-responsive', {
+    method: 'POST',
+    body: form,
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Не удалось собрать picture'));
+  }
+
+  const zipBlob = await response.blob();
+  const tokens = (response.headers.get('X-Tokens') ?? 'xl')
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part): part is BreakpointToken => part === 'md' || part === 'lg' || part === 'xl');
+  const has2xTokens = new Set(
+    (response.headers.get('X-Has-2x') ?? '')
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean),
+  );
+  const has2x: Partial<Record<BreakpointToken, boolean>> = {};
+  for (const token of tokens) {
+    has2x[token] = has2xTokens.has(token);
+  }
+  const fallbackExtension = response.headers.get('X-Fallback-Extension') ?? 'jpg';
+  const imgWidth = Number(response.headers.get('X-Img-Width') ?? 0);
+  const imgHeight = Number(response.headers.get('X-Img-Height') ?? 0);
+
+  return {
+    zipBlob,
+    tokens,
+    has2x,
+    fallbackExtension,
+    imgWidth: imgWidth > 0 ? imgWidth : undefined,
+    imgHeight: imgHeight > 0 ? imgHeight : undefined,
+    downloadName: `${baseName}-responsive.zip`,
+  };
+}
+
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
 }

@@ -1,16 +1,26 @@
 :root {
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-body: 'Source Sans 3', 'Segoe UI', sans-serif;
-  --ink: #2a2d22;
-  --muted: #6d6a5c;
-  --accent: #55633a;
-  --accent-strong: #44512e;
-  --accent-ink: #f4f1e6;
-  --surface: #f7f4ec;
-  --line: rgba(55, 52, 40, 0.14);
-  --danger: #9a3d2f;
+  --font-display: 'Inter', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --ink: #0f172a;
+  --muted: #475569;
+  --muted-soft: #94a3b8;
+  --accent: #6366f1;
+  --accent-strong: #4f46e5;
+  --accent-soft: #eef2ff;
+  --accent-ink: #ffffff;
+  --surface: #ffffff;
+  --page: #fafafa;
+  --line: #e2e8f0;
+  --success: #10b981;
+  --success-soft: #ecfdf5;
+  --danger: #dc2626;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 6px;
+  --header-h: 72px;
   color: var(--ink);
-  background: #e7e2d4;
+  background: var(--page);
   font-family: var(--font-body);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -34,6 +44,7 @@ body,
 
 body {
   margin: 0;
+  background: var(--page);
 }
 
 button,
@@ -45,6 +56,7 @@ button:focus-visible,
 [role='button']:focus-visible,
 [role='switch']:focus-visible,
 [role='radio']:focus-visible,
+[role='tab']:focus-visible,
 input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

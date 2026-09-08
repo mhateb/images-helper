@@ -1,5 +1,7 @@
 export type OutputFormat = 'optimized' | 'webp' | 'avif';
 
+export type BreakpointToken = 'md' | 'lg' | 'xl';
+
 export interface CropArea {
   x: number;
   y: number;
@@ -28,4 +30,26 @@ export interface OptimizeResult {
   originalHeight: number;
   extension: string;
   format: OutputFormat;
+}
+
+export interface ArtSlotInput {
+  file: File;
+  crop?: CropArea;
+}
+
+export interface ArtDirectionParams {
+  slots: Partial<Record<BreakpointToken, ArtSlotInput>>;
+  trim: boolean;
+  quality: number;
+  baseName?: string;
+}
+
+export interface ArtDirectionResult {
+  zipBlob: Blob;
+  tokens: BreakpointToken[];
+  has2x: Partial<Record<BreakpointToken, boolean>>;
+  fallbackExtension: string;
+  imgWidth?: number;
+  imgHeight?: number;
+  downloadName: string;
 }

@@ -6,9 +6,17 @@ const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif,image/gif';
 
 interface DropzoneProps {
   onFile: (file: File) => void;
+  title?: string;
+  hint?: string;
+  compact?: boolean;
 }
 
-export function Dropzone({ onFile }: DropzoneProps) {
+export function Dropzone({
+  onFile,
+  title = 'Перетащите изображение сюда или нажмите для загрузки',
+  hint = 'Поддерживаются PNG, JPEG, WEBP до 30 МБ',
+  compact = false,
+}: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +50,7 @@ export function Dropzone({ onFile }: DropzoneProps) {
   return (
     <div className={styles.wrap}>
       <div
-        className={`${styles.zone} ${dragging ? styles.dragging : ''}`}
+        className={`${styles.zone} ${compact ? styles.compact : ''} ${dragging ? styles.dragging : ''}`}
         onDragEnter={(e) => {
           e.preventDefault();
           setDragging(true);
@@ -73,10 +81,13 @@ export function Dropzone({ onFile }: DropzoneProps) {
           className={styles.input}
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
-        <p className={styles.kicker}>Перетащите сюда</p>
-        <p className={styles.title}>Загрузите картинку</p>
-        <p className={styles.hint}>JPEG, PNG, WebP, AVIF, GIF · до 30 МБ</p>
-        <span className={styles.cta}>Выбрать файл</span>
+        <div className={styles.iconWrap} aria-hidden>
+          <img src="/icons/cloud-upload.svg" alt="" width={24} height={24} />
+        </div>
+        <div className={styles.text}>
+          <p className={styles.title}>{title}</p>
+          <p className={styles.hint}>{hint}</p>
+        </div>
       </div>
       {error ? <p className={styles.error}>{error}</p> : null}
     </div>

@@ -8,6 +8,7 @@ interface OptionsPanelProps {
   resizeMaxWidth: number;
   quality: number;
   busy: boolean;
+  disabled?: boolean;
   onFormatChange: (format: OutputFormat) => void;
   onTrimChange: (trim: boolean) => void;
   onResizeChange: (resize: boolean) => void;
@@ -29,6 +30,7 @@ export function OptionsPanel({
   resizeMaxWidth,
   quality,
   busy,
+  disabled = false,
   onFormatChange,
   onTrimChange,
   onResizeChange,
@@ -37,14 +39,16 @@ export function OptionsPanel({
   onOptimize,
 }: OptionsPanelProps) {
   return (
-    <aside className={styles.panel}>
+    <aside className={`${styles.panel} ${disabled ? styles.disabled : ''}`}>
       <header className={styles.header}>
-        <h2>Параметры</h2>
-        <p>Формат, trim, resize и качество перед оптимизацией.</p>
+        <h2>Настройки оптимизации</h2>
+        <p>Точная настройка размера и качества</p>
       </header>
 
+      <div className={styles.divider} />
+
       <div className={styles.section}>
-        <span className={styles.label}>Формат</span>
+        <span className={styles.sectionLabel}>Формат</span>
         <div className={styles.formats} role="radiogroup" aria-label="Формат результата">
           {FORMATS.map((item) => (
             <button
@@ -54,6 +58,7 @@ export function OptionsPanel({
               aria-checked={format === item.id}
               className={`${styles.formatBtn} ${format === item.id ? styles.active : ''}`}
               onClick={() => onFormatChange(item.id)}
+              disabled={disabled}
             >
               <strong>{item.label}</strong>
               <span>{item.hint}</span>
@@ -62,10 +67,12 @@ export function OptionsPanel({
         </div>
       </div>
 
-      <label className={styles.toggleRow}>
+      <div className={styles.divider} />
+
+      <div className={styles.toggleRow}>
         <div>
-          <span className={styles.label}>Trim</span>
-          <p>Авто-обрезка пустых и однотонных краёв после кропа.</p>
+          <p className={styles.rowTitle}>Обрезать пустое пространство</p>
+          <p className={styles.rowHint}>Автоматическая обрезка пустых пикселей по краям</p>
         </div>
         <button
           type="button"
@@ -73,16 +80,26 @@ export function OptionsPanel({
           aria-checked={trim}
           className={`${styles.switch} ${trim ? styles.on : ''}`}
           onClick={() => onTrimChange(!trim)}
+          disabled={disabled}
         >
           <span className={styles.knob} />
         </button>
-      </label>
+      </div>
+
+      <div className={styles.divider} />
 
       <div className={styles.resizeBlock}>
-        <label className={styles.toggleRow}>
+        <div className={styles.resizeHead}>
+          <p className={styles.rowTitle}>Изменение размера</p>
+          <span className={styles.lockBadge}>
+            <img src="/icons/lock.svg" alt="" width={12} height={12} />
+            СОХРАНЯТЬ ПРОПОРЦИИ
+          </span>
+        </div>
+
+        <div className={styles.toggleRow}>
           <div>
-            <span className={styles.label}>Resize</span>
-            <p>Уменьшить ширину с сохранением пропорций. Увеличение отключено.</p>
+            <p className={styles.rowHint}>Уменьшить ширину. Увеличение отключено.</p>
           </div>
           <button
             type="button"
@@ -90,30 +107,37 @@ export function OptionsPanel({
             aria-checked={resize}
             className={`${styles.switch} ${resize ? styles.on : ''}`}
             onClick={() => onResizeChange(!resize)}
+            disabled={disabled}
           >
             <span className={styles.knob} />
           </button>
-        </label>
+        </div>
 
         {resize ? (
-          <label className={styles.resizeField}>
-            <span className={styles.label}>Макс. ширина (px)</span>
-            <input
-              type="number"
-              min={16}
-              max={10000}
-              step={1}
-              value={resizeMaxWidth}
-              onChange={(e) => onResizeMaxWidthChange(Number(e.target.value) || 1920)}
-            />
+          <label className={styles.inputField}>
+            <span className={styles.inputLabel}>Ширина</span>
+            <span className={styles.inputBox}>
+              <input
+                type="number"
+                min={16}
+                max={10000}
+                step={1}
+                value={resizeMaxWidth}
+                onChange={(e) => onResizeMaxWidthChange(Number(e.target.value) || 1920)}
+                disabled={disabled}
+              />
+              <span className={styles.unit}>PX</span>
+            </span>
           </label>
         ) : null}
       </div>
 
-      <label className={styles.quality}>
+      <div className={styles.divider} />
+
+      <div className={styles.quality}>
         <div className={styles.qualityHead}>
-          <span className={styles.label}>Качество</span>
-          <span>{quality}</span>
+          <p className={styles.rowTitle}>Качество вывода</p>
+          <span className={styles.qualityValue}>{quality}%</span>
         </div>
         <input
           type="range"
@@ -122,16 +146,22 @@ export function OptionsPanel({
           step={1}
           value={quality}
           onChange={(e) => onQualityChange(Number(e.target.value))}
+          disabled={disabled}
         />
-      </label>
+        <div className={styles.sliderLabels}>
+          <span>МАКС. СЖАТИЕ</span>
+          <span>БЕЗ ПОТЕРЬ</span>
+        </div>
+      </div>
 
       <button
         type="button"
         className={styles.submit}
         onClick={onOptimize}
-        disabled={busy}
+        disabled={busy || disabled}
       >
-        {busy ? 'Оптимизируем…' : 'Оптимизировать'}
+        <img src="/icons/zap.svg" alt="" width={16} height={16} />
+        {busy ? 'Оптимизируем…' : 'Оптимизировать и сжать'}
       </button>
     </aside>
   );

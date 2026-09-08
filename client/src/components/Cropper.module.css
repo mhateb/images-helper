@@ -17,12 +17,12 @@
   overflow: hidden;
   box-sizing: border-box;
   background:
-    linear-gradient(45deg, #d8d4c8 25%, transparent 25%) 0 0 / 16px 16px,
-    linear-gradient(-45deg, #d8d4c8 25%, transparent 25%) 0 8px / 16px 16px,
-    linear-gradient(45deg, transparent 75%, #d8d4c8 75%) 8px -8px / 16px 16px,
-    linear-gradient(-45deg, transparent 75%, #d8d4c8 75%) -8px 0 / 16px 16px,
-    #efece3;
-  border-radius: 2px;
+    linear-gradient(45deg, #e2e8f0 25%, transparent 25%) 0 0 / 16px 16px,
+    linear-gradient(-45deg, #e2e8f0 25%, transparent 25%) 0 8px / 16px 16px,
+    linear-gradient(45deg, transparent 75%, #e2e8f0 75%) 8px -8px / 16px 16px,
+    linear-gradient(-45deg, transparent 75%, #e2e8f0 75%) -8px 0 / 16px 16px,
+    #f8fafc;
+  border-radius: var(--radius-sm);
 }
 
 /* ReactCrop sets img { max-height: inherit } — height must be on this root. */
@@ -32,8 +32,8 @@
 }
 
 .crop :global(.ReactCrop__crop-selection) {
-  border-color: color-mix(in srgb, var(--accent) 85%, white);
-  box-shadow: 0 0 0 9999em rgba(42, 45, 34, 0.45);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 9999em rgba(15, 23, 42, 0.45);
 }
 
 .crop :global(.ReactCrop__drag-handle) {

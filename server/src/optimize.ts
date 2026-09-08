@@ -298,3 +298,150 @@ export async function optimizeAllFormats(
 
   return results;
 }
+
+/** Project breakpoints — keep in sync with client/src/constants/breakpoints.ts */
+export const BP = {
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+} as const;
+
+export type BreakpointToken = keyof typeof BP;
+
+export interface ResponsiveFile {
+  filename: string;
+  format: OutputFormat;
+  buffer: Buffer;
+  contentType: string;
+  extension: string;
+  width: number;
+  height: number;
+  optimizedSize: number;
+}
+
+/**
+ * Per-breakpoint art direction: each upload is @2x for that token.
+ * Emits `{base}-{token}.{ext}` (1x) and `{base}-{token}-2x.{ext}` when larger.
+ */
+export async function optimizeArtDirection(
+  slots: {
+    token: BreakpointToken;
+    buffer: Buffer;
+    crop?: CropRect;
+  }[],
+  options: {
+    trim: boolean;
+    quality: number;
+    baseName: string;
+  },
+): Promise<{
+  files: ResponsiveFile[];
+  tokens: BreakpointToken[];
+  has2x: Partial<Record<BreakpointToken, boolean>>;
+  fallbackExtension: string;
+  imgWidth: number;
+  imgHeight: number;
+}> {
+  const quality = clampQuality(options.quality);
+  const formats: OutputFormat[] = ['avif', 'webp', 'optimized'];
+  const files: ResponsiveFile[] = [];
+  const tokens: BreakpointToken[] = [];
+  const has2x: Partial<Record<BreakpointToken, boolean>> = {};
+  let fallbackExtension = 'jpg';
+  let imgWidth: number = BP.xl;
+  let imgHeight = 0;
+
+  const order: BreakpointToken[] = ['md', 'lg', 'xl'];
+  const sorted = [...slots].sort(
+    (a, b) => order.indexOf(a.token) - order.indexOf(b.token),
+  );
+
+  for (const slot of sorted) {
+    const prepared = await prepareBuffer(slot.buffer, {
+      trim: options.trim,
+      crop: slot.crop,
+    });
+
+    const target1x = BP[slot.token];
+    const target2x = BP[slot.token] * 2;
+    const densities: { suffix: string; width: number }[] = [
+      { suffix: '', width: target1x },
+      { suffix: '-2x', width: target2x },
+    ];
+
+    const seen = new Set<number>();
+    let produced2x = false;
+    tokens.push(slot.token);
+
+    for (const density of densities) {
+      const resized = await applyResize(prepared.buffer, density.width);
+      const meta = await sharp(resized, { failOn: 'none' }).metadata();
+      const actualWidth = meta.width ?? density.width;
+
+      if (seen.has(actualWidth)) {
+        continue;
+      }
+      seen.add(actualWidth);
+
+      if (density.suffix === '-2x') {
+        produced2x = true;
+      }
+
+      for (const format of formats) {
+        const encoded = await encodeBuffer(
+          resized,
+          prepared.inputFormat,
+          format,
+          quality,
+          slot.buffer.length,
+          prepared.originalWidth,
+          prepared.originalHeight,
+        );
+
+        if (format === 'optimized') {
+          fallbackExtension = encoded.extension;
+          if (slot.token === 'xl' && density.suffix === '') {
+            imgWidth = encoded.width;
+            imgHeight = encoded.height;
+          }
+        }
+
+        const nameStem = `${options.baseName}-${slot.token}${density.suffix}`;
+        files.push({
+          filename: `${nameStem}.${encoded.extension}`,
+          format,
+          buffer: encoded.buffer,
+          contentType: encoded.contentType,
+          extension: encoded.extension,
+          width: encoded.width,
+          height: encoded.height,
+          optimizedSize: encoded.optimizedSize,
+        });
+      }
+    }
+
+    has2x[slot.token] = produced2x;
+  }
+
+  if (imgHeight <= 0) {
+    const xl1x = files.find(
+      (file) =>
+        file.format === 'optimized' &&
+        file.filename.startsWith(`${options.baseName}-xl.`) &&
+        !file.filename.includes('-2x'),
+    );
+    if (xl1x) {
+      imgWidth = xl1x.width;
+      imgHeight = xl1x.height;
+    }
+  }
+
+  return {
+    files,
+    tokens,
+    has2x,
+    fallbackExtension,
+    imgWidth,
+    imgHeight,
+  };
+}
