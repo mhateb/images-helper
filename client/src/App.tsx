@@ -18,12 +18,12 @@ export default function App() {
           type="button"
           className={styles.logo}
           onClick={() => navigate('/')}
-          aria-label="Squeeze.io — на главную"
+          aria-label="Fixpix.ru — на главную"
         >
           <span className={styles.logoIcon} aria-hidden>
             <img src="/icons/crop.svg" alt="" width={16} height={16} />
           </span>
-          <span className={styles.logoText}>SQUEEZE.IO</span>
+          <span className={styles.logoText}>FIXPIX.RU</span>
         </button>
 
         <nav className={styles.tabs} aria-label="Разделы">
