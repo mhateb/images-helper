@@ -3,30 +3,69 @@ import { formatBytes, savingsPercent } from '../utils/format';
 import styles from './ResultPanel.module.css';
 
 interface ResultPanelProps {
-  result: OptimizeResult;
+  results: OptimizeResult[];
+  activeFormat: OutputFormat;
   busy: boolean;
   downloadingAll: boolean;
-  onFormatChange: (format: OutputFormat) => void;
+  onActiveFormatChange: (format: OutputFormat) => void;
   onDownload: () => void;
   onDownloadAll: () => void;
   fileName: string;
+  readyCount?: number;
+  zippingResults?: boolean;
+  onDownloadResults?: () => void;
 }
 
-const FORMATS: OutputFormat[] = ['optimized', 'webp', 'avif'];
+const FORMAT_ORDER: OutputFormat[] = ['optimized', 'webp', 'avif'];
+
+function formatTitle(format: OutputFormat): string {
+  return format === 'optimized' ? 'Optimized' : format.toUpperCase();
+}
 
 export function ResultPanel({
-  result,
+  results,
+  activeFormat,
   busy,
   downloadingAll,
-  onFormatChange,
+  onActiveFormatChange,
   onDownload,
   onDownloadAll,
   fileName,
+  readyCount = 1,
+  zippingResults = false,
+  onDownloadResults,
 }: ResultPanelProps) {
+  const result =
+    results.find((item) => item.format === activeFormat) ?? results[0] ?? null;
+  if (!result) return null;
+
   const saved = savingsPercent(result.originalSize, result.optimizedSize);
+  const showBatchZip = readyCount > 1 && onDownloadResults;
+  const availableFormats = FORMAT_ORDER.filter((format) =>
+    results.some((item) => item.format === format),
+  );
+  const downloadLabel =
+    results.length > 1 ? `Скачать (${results.length})` : 'Скачать';
 
   return (
     <section className={styles.root} aria-live="polite">
+      {showBatchZip ? (
+        <div className={styles.batchBar}>
+          <div className={styles.batchText}>
+            <strong>Готово {readyCount} файлов</strong>
+            <span>Скачать все результаты одним ZIP-архивом</span>
+          </div>
+          <button
+            type="button"
+            className={styles.batchDownload}
+            onClick={onDownloadResults}
+            disabled={busy || zippingResults}
+          >
+            {zippingResults ? 'Собираем ZIP…' : 'Скачать ZIP'}
+          </button>
+        </div>
+      ) : null}
+
       <header className={styles.header}>
         <div>
           <p className={styles.kicker}>Результат</p>
@@ -39,10 +78,10 @@ export function ResultPanel({
             onClick={onDownloadAll}
             disabled={busy || downloadingAll}
           >
-            {downloadingAll ? 'Готовим ZIP…' : 'Скачать все'}
+            {downloadingAll ? 'Готовим ZIP…' : 'Все форматы'}
           </button>
           <button type="button" className={styles.download} onClick={onDownload}>
-            Скачать
+            {downloadLabel}
           </button>
         </div>
       </header>
@@ -95,22 +134,24 @@ export function ResultPanel({
         </div>
       </div>
 
-      <div className={styles.toggles}>
-        <span className={styles.label}>Быстрый формат</span>
-        <div className={styles.pills} role="group" aria-label="Сменить формат результата">
-          {FORMATS.map((item) => (
-            <button
-              key={item}
-              type="button"
-              className={`${styles.pill} ${result.format === item ? styles.active : ''}`}
-              onClick={() => onFormatChange(item)}
-              disabled={busy || result.format === item}
-            >
-              {item === 'optimized' ? 'Optimized' : item.toUpperCase()}
-            </button>
-          ))}
+      {availableFormats.length > 1 ? (
+        <div className={styles.toggles}>
+          <span className={styles.label}>Формат превью</span>
+          <div className={styles.pills} role="group" aria-label="Сменить формат результата">
+            {availableFormats.map((item) => (
+              <button
+                key={item}
+                type="button"
+                className={`${styles.pill} ${result.format === item ? styles.active : ''}`}
+                onClick={() => onActiveFormatChange(item)}
+                disabled={busy || result.format === item}
+              >
+                {formatTitle(item)}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
     </section>
   );
 }

@@ -5,46 +5,76 @@ const MAX_BYTES = 30 * 1024 * 1024;
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif,image/gif';
 
 interface DropzoneProps {
-  onFile: (file: File) => void;
+  onFiles: (files: File[]) => void;
+  multiple?: boolean;
   title?: string;
   hint?: string;
   compact?: boolean;
 }
 
+function isAcceptedImage(file: File): boolean {
+  return file.type.startsWith('image/');
+}
+
 export function Dropzone({
-  onFile,
-  title = 'Перетащите изображение сюда или нажмите для загрузки',
-  hint = 'Поддерживаются PNG, JPEG, WEBP до 30 МБ',
+  onFiles,
+  multiple = true,
+  title = 'Перетащите изображения сюда или нажмите для загрузки',
+  hint = 'До 20 файлов за раз. PNG, JPEG, WEBP, AVIF, GIF до 30 МБ каждый',
   compact = false,
 }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleFile = useCallback(
-    (file: File | undefined) => {
-      if (!file) return;
+  const handleFiles = useCallback(
+    (list: FileList | File[] | null | undefined) => {
+      if (!list || list.length === 0) return;
 
-      if (!file.type.startsWith('image/')) {
-        setError('Нужен файл изображения (JPEG, PNG, WebP, AVIF, GIF).');
+      const incoming = Array.from(list);
+      const accepted: File[] = [];
+      let rejectedType = 0;
+      let rejectedSize = 0;
+
+      for (const file of incoming) {
+        if (!isAcceptedImage(file)) {
+          rejectedType += 1;
+          continue;
+        }
+        if (file.size > MAX_BYTES) {
+          rejectedSize += 1;
+          continue;
+        }
+        accepted.push(file);
+      }
+
+      if (accepted.length === 0) {
+        if (rejectedSize > 0) {
+          setError('Файлы больше 30 МБ. Выберите изображения поменьше.');
+        } else {
+          setError('Нужны файлы изображений (JPEG, PNG, WebP, AVIF, GIF).');
+        }
         return;
       }
 
-      if (file.size > MAX_BYTES) {
-        setError('Файл больше 30 МБ. Выберите изображение поменьше.');
-        return;
+      if (rejectedType > 0 || rejectedSize > 0) {
+        const parts: string[] = [];
+        if (rejectedType > 0) parts.push(`${rejectedType} не изображение`);
+        if (rejectedSize > 0) parts.push(`${rejectedSize} больше 30 МБ`);
+        setError(`Пропущено: ${parts.join(', ')}. Остальные загружены.`);
+      } else {
+        setError(null);
       }
 
-      setError(null);
-      onFile(file);
+      onFiles(multiple ? accepted : accepted.slice(0, 1));
     },
-    [onFile],
+    [multiple, onFiles],
   );
 
   const onDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setDragging(false);
-    handleFile(event.dataTransfer.files[0]);
+    handleFiles(event.dataTransfer.files);
   };
 
   return (
@@ -78,8 +108,12 @@ export function Dropzone({
           ref={inputRef}
           type="file"
           accept={ACCEPT}
+          multiple={multiple}
           className={styles.input}
-          onChange={(e) => handleFile(e.target.files?.[0])}
+          onChange={(e) => {
+            handleFiles(e.target.files);
+            e.target.value = '';
+          }}
         />
         <div className={styles.iconWrap} aria-hidden>
           <img src="/icons/cloud-upload.svg" alt="" width={24} height={24} />

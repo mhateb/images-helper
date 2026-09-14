@@ -10,6 +10,7 @@ import styles from './Cropper.module.css';
 
 interface CropperProps {
   imageUrl: string;
+  initialCrop?: CropArea;
   onCropChange: (crop: CropArea) => void;
 }
 
@@ -26,8 +27,24 @@ function toNaturalCrop(
   };
 }
 
-export function Cropper({ imageUrl, onCropChange }: CropperProps) {
+function toPercentCrop(
+  area: CropArea,
+  naturalWidth: number,
+  naturalHeight: number,
+): PercentCrop {
+  return {
+    unit: '%',
+    x: (area.x / naturalWidth) * 100,
+    y: (area.y / naturalHeight) * 100,
+    width: (area.width / naturalWidth) * 100,
+    height: (area.height / naturalHeight) * 100,
+  };
+}
+
+export function Cropper({ imageUrl, initialCrop, onCropChange }: CropperProps) {
   const imgRef = useRef<HTMLImageElement>(null);
+  const initialCropRef = useRef(initialCrop);
+  initialCropRef.current = initialCrop;
   const [crop, setCrop] = useState<Crop>();
 
   useEffect(() => {
@@ -50,11 +67,11 @@ export function Cropper({ imageUrl, onCropChange }: CropperProps) {
   const onImageLoad = useCallback(
     (e: SyntheticEvent<HTMLImageElement>) => {
       const { width, height, naturalWidth, naturalHeight } = e.currentTarget;
-      const next = centerCrop(
-        { unit: '%', width: 90, height: 90 },
-        width,
-        height,
-      );
+      const saved = initialCropRef.current;
+      const next =
+        saved && saved.width > 0 && saved.height > 0
+          ? toPercentCrop(saved, naturalWidth, naturalHeight)
+          : centerCrop({ unit: '%', width: 100, height: 100 }, width, height);
       setCrop(next);
       onCropChange(toNaturalCrop(next, naturalWidth, naturalHeight));
     },

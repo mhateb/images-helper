@@ -2,14 +2,16 @@ import type { OutputFormat } from '../types';
 import styles from './OptionsPanel.module.css';
 
 interface OptionsPanelProps {
-  format: OutputFormat;
+  formats: OutputFormat[];
   trim: boolean;
   resize: boolean;
   resizeMaxWidth: number;
   quality: number;
   busy: boolean;
   disabled?: boolean;
-  onFormatChange: (format: OutputFormat) => void;
+  fileCount?: number;
+  progress?: { done: number; total: number } | null;
+  onFormatsChange: (formats: OutputFormat[]) => void;
   onTrimChange: (trim: boolean) => void;
   onResizeChange: (resize: boolean) => void;
   onResizeMaxWidthChange: (width: number) => void;
@@ -24,20 +26,51 @@ const FORMATS: { id: OutputFormat; label: string; hint: string }[] = [
 ];
 
 export function OptionsPanel({
-  format,
+  formats,
   trim,
   resize,
   resizeMaxWidth,
   quality,
   busy,
   disabled = false,
-  onFormatChange,
+  fileCount = 0,
+  progress = null,
+  onFormatsChange,
   onTrimChange,
   onResizeChange,
   onResizeMaxWidthChange,
   onQualityChange,
   onOptimize,
 }: OptionsPanelProps) {
+  const toggleFormat = (id: OutputFormat) => {
+    if (formats.includes(id)) {
+      if (formats.length === 1) return;
+      onFormatsChange(formats.filter((item) => item !== id));
+      return;
+    }
+    onFormatsChange(
+      FORMATS.map((item) => item.id).filter((item) => formats.includes(item) || item === id),
+    );
+  };
+  const submitLabel = (() => {
+    if (busy && progress && progress.total > 1) {
+      return `Оптимизируем… ${progress.done}/${progress.total}`;
+    }
+    if (busy) return 'Оптимизируем…';
+    if (fileCount > 1) {
+      const mod10 = fileCount % 10;
+      const mod100 = fileCount % 100;
+      const word =
+        mod10 === 1 && mod100 !== 11
+          ? 'файл'
+          : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+            ? 'файла'
+            : 'файлов';
+      return `Оптимизировать ${fileCount} ${word}`;
+    }
+    return 'Оптимизировать и сжать';
+  })();
+
   return (
     <aside className={`${styles.panel} ${disabled ? styles.disabled : ''}`}>
       <header className={styles.header}>
@@ -48,22 +81,26 @@ export function OptionsPanel({
       <div className={styles.divider} />
 
       <div className={styles.section}>
-        <span className={styles.sectionLabel}>Формат</span>
-        <div className={styles.formats} role="radiogroup" aria-label="Формат результата">
-          {FORMATS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="radio"
-              aria-checked={format === item.id}
-              className={`${styles.formatBtn} ${format === item.id ? styles.active : ''}`}
-              onClick={() => onFormatChange(item.id)}
-              disabled={disabled}
-            >
-              <strong>{item.label}</strong>
-              <span>{item.hint}</span>
-            </button>
-          ))}
+        <span className={styles.sectionLabel}>Форматы</span>
+        <p className={styles.sectionHint}>Можно выбрать несколько — каждый даст отдельный файл</p>
+        <div className={styles.formats} role="group" aria-label="Форматы результата">
+          {FORMATS.map((item) => {
+            const selected = formats.includes(item.id);
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="checkbox"
+                aria-checked={selected}
+                className={`${styles.formatBtn} ${selected ? styles.active : ''}`}
+                onClick={() => toggleFormat(item.id)}
+                disabled={disabled}
+              >
+                <strong>{item.label}</strong>
+                <span>{item.hint}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -161,7 +198,7 @@ export function OptionsPanel({
         disabled={busy || disabled}
       >
         <img src="/icons/zap.svg" alt="" width={16} height={16} />
-        {busy ? 'Оптимизируем…' : 'Оптимизировать и сжать'}
+        {submitLabel}
       </button>
     </aside>
   );

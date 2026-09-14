@@ -8,6 +8,57 @@
   background: var(--surface);
 }
 
+.batchBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent-soft) 70%, white);
+}
+
+.batchText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.batchText strong {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.batchText span {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.batchDownload {
+  flex-shrink: 0;
+  padding: 0.7rem 1.15rem;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.batchDownload:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.batchDownload:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .header {
   display: flex;
   align-items: flex-start;
@@ -192,6 +243,17 @@
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent);
+}
+
+@media (max-width: 700px) {
+  .batchBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .batchDownload {
+    width: 100%;
+  }
 }
 
 @media (min-width: 700px) {

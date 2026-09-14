@@ -199,3 +199,43 @@ export function downloadBlob(blob: Blob, filename: string): void {
   link.click();
   URL.revokeObjectURL(url);
 }
+
+function uniqueZipName(base: string, extension: string, used: Set<string>): string {
+  let name = `${base}.${extension}`;
+  if (!used.has(name)) {
+    used.add(name);
+    return name;
+  }
+
+  let index = 2;
+  while (used.has(`${base}-${index}.${extension}`)) {
+    index += 1;
+  }
+  name = `${base}-${index}.${extension}`;
+  used.add(name);
+  return name;
+}
+
+export async function downloadResultsZip(
+  files: Array<{ fileName: string; blob: Blob; extension: string }>,
+  zipName = 'fitpix-results.zip',
+): Promise<void> {
+  if (files.length === 0) return;
+
+  const { default: JSZip } = await import('jszip');
+  const zip = new JSZip();
+  const used = new Set<string>();
+
+  for (const file of files) {
+    const base = file.fileName.replace(/\.[^.]+$/, '') || 'image';
+    const name = uniqueZipName(base, file.extension, used);
+    zip.file(name, file.blob);
+  }
+
+  const blob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  });
+  downloadBlob(blob, zipName);
+}
