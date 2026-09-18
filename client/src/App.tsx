@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { BugReportModal } from './components/BugReportModal';
 import { usePath } from './hooks/usePath';
 import { GuidePage } from './pages/GuidePage';
 import { HomePage } from './pages/HomePage';
@@ -9,6 +11,7 @@ import styles from './App.module.css';
 export default function App() {
   const { path, navigate } = usePath();
   const isGuide = path === '/guide';
+  const [bugReportOpen, setBugReportOpen] = useState(false);
   // const [toolMode, setToolMode] = useState<ToolMode>('single');
 
   return (
@@ -43,11 +46,22 @@ export default function App() {
           </button>
         </nav>
 
-        <div className={styles.status}>
-          <span className={styles.statusDot} aria-hidden />
-          <span className={styles.statusText}>v1.2.0 АКТИВЕН</span>
+        <div className={styles.headerRight}>
+          <button
+            type="button"
+            className={styles.bugReport}
+            onClick={() => setBugReportOpen(true)}
+          >
+            Багрепорт
+          </button>
+          <div className={styles.status}>
+            <span className={styles.statusDot} aria-hidden />
+            <span className={styles.statusText}>v1.2.0 АКТИВЕН</span>
+          </div>
         </div>
       </header>
+
+      <BugReportModal open={bugReportOpen} onClose={() => setBugReportOpen(false)} />
 
       {/* {!isGuide ? (
         <div className={styles.modeBar}>

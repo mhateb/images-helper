@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import cors from '@fastify/cors';
@@ -6,6 +6,7 @@ import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyRequest } from 'fastify';
 import JSZip from 'jszip';
+import nodemailer from 'nodemailer';
 import {
   isAllowedMime,
   optimizeAllFormats,
@@ -18,10 +19,197 @@ import {
 } from './optimize.js';
 import { buildArtDirectionPicture } from './pictureMarkup.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+function loadLocalEnv(): void {
+  const candidates = [
+    resolve(process.cwd(), '.env'),
+    resolve(process.cwd(), '../.env'),
+    resolve(__dirname, '../../.env'),
+  ];
+
+  const envPath = candidates.find((path) => existsSync(path));
+  if (!envPath) return;
+
+  // Node 20.12+ / 22+: не перезаписывает уже заданные переменные окружения
+  if (typeof process.loadEnvFile === 'function') {
+    process.loadEnvFile(envPath);
+    return;
+  }
+
+  const text = readFileSync(envPath, 'utf8');
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (key && process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadLocalEnv();
+
 const MAX_FILE_SIZE = 30 * 1024 * 1024;
+const MAX_SCREENSHOT_SIZE = 5 * 1024 * 1024;
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? '0.0.0.0';
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const SMTP_HOST = process.env.SMTP_HOST ?? '';
+const SMTP_PORT = Number(process.env.SMTP_PORT ?? 465);
+const SMTP_USER = process.env.SMTP_USER ?? '';
+const SMTP_PASS = process.env.SMTP_PASS ?? '';
+const SMTP_FROM = process.env.SMTP_FROM ?? SMTP_USER;
+const BUG_REPORT_TO = process.env.BUG_REPORT_TO ?? 'maaaslanov@gmail.com';
+
+const SCREENSHOT_MIMES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]);
+
+function isSmtpConfigured(): boolean {
+  return Boolean(SMTP_HOST && SMTP_USER && SMTP_PASS);
+}
+
+async function sendBugReportEmail(report: BugReportUpload): Promise<void> {
+  const preview = report.description.slice(0, 80).replace(/\s+/g, ' ');
+  const subject = `[Fitpix] Багрепорт: ${preview}${report.description.length > 80 ? '…' : ''}`;
+  const text = [
+    'Новый багрепорт с Fitpix',
+    '',
+    `Страница: ${report.pageUrl || '—'}`,
+    `Контакт: ${report.contactEmail || 'не указан'}`,
+    `User-Agent: ${report.userAgent || '—'}`,
+    `Скриншот: ${report.screenshot ? report.screenshot.filename : 'нет'}`,
+    '',
+    'Описание:',
+    report.description,
+  ].join('\n');
+
+  const transport = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+  });
+
+  await transport.sendMail({
+    from: SMTP_FROM || SMTP_USER,
+    to: BUG_REPORT_TO,
+    replyTo: report.contactEmail || undefined,
+    subject,
+    text,
+    attachments: report.screenshot
+      ? [
+          {
+            filename: report.screenshot.filename,
+            content: report.screenshot.buffer,
+            contentType: report.screenshot.mimetype,
+          },
+        ]
+      : undefined,
+  });
+}
+
+type BugReportUpload = {
+  description: string;
+  contactEmail: string;
+  pageUrl: string;
+  userAgent: string;
+  screenshot: { buffer: Buffer; filename: string; mimetype: string } | null;
+};
+
+async function readBugReportUpload(
+  request: FastifyRequest,
+): Promise<BugReportUpload | UploadErr> {
+  let description = '';
+  let contactEmail = '';
+  let pageUrl = '';
+  let userAgent = '';
+  let screenshot: BugReportUpload['screenshot'] = null;
+  let truncated = false;
+
+  try {
+    for await (const part of request.parts()) {
+      if (part.type === 'file') {
+        if (part.fieldname !== 'screenshot') {
+          await part.toBuffer();
+          continue;
+        }
+        const buffer = await part.toBuffer();
+        truncated = part.file.truncated;
+        if (!SCREENSHOT_MIMES.has(part.mimetype)) {
+          return {
+            error: {
+              code: 415,
+              message: 'Скриншот: допустимы JPEG, PNG, WebP или GIF.',
+            },
+          };
+        }
+        if (buffer.length === 0) {
+          return { error: { code: 400, message: 'Пустой скриншот.' } };
+        }
+        if (buffer.length > MAX_SCREENSHOT_SIZE) {
+          return {
+            error: { code: 413, message: 'Скриншот больше 5 МБ.' },
+          };
+        }
+        screenshot = {
+          buffer,
+          filename: part.filename || 'screenshot.png',
+          mimetype: part.mimetype,
+        };
+      } else {
+        const value = String(part.value ?? '').trim();
+        if (part.fieldname === 'description') description = value;
+        else if (part.fieldname === 'contactEmail') contactEmail = value;
+        else if (part.fieldname === 'pageUrl') pageUrl = value;
+        else if (part.fieldname === 'userAgent') userAgent = value;
+      }
+    }
+  } catch (error) {
+    request.log.error(error);
+    return { error: { code: 400, message: 'Некорректный multipart-запрос.' } };
+  }
+
+  if (truncated) {
+    return { error: { code: 413, message: 'Скриншот больше 5 МБ.' } };
+  }
+
+  if (description.length < 10) {
+    return {
+      error: {
+        code: 400,
+        message: 'Опишите проблему подробнее (минимум 10 символов).',
+      },
+    };
+  }
+
+  if (description.length > 4000) {
+    return {
+      error: { code: 400, message: 'Описание слишком длинное (макс. 4000 символов).' },
+    };
+  }
+
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    return { error: { code: 400, message: 'Некорректный email для ответа.' } };
+  }
+
+  return { description, contactEmail, pageUrl, userAgent, screenshot };
+}
 
 function resolveStaticDir(): string | null {
   if (process.env.STATIC_DIR) {
@@ -356,6 +544,29 @@ async function main() {
       request.log.error(error);
       return reply.code(422).send({
         error: 'Не удалось обработать изображение. Проверьте файл и параметры кропа.',
+      });
+    }
+  });
+
+  app.post('/api/bug-report', async (request, reply) => {
+    if (!isSmtpConfigured()) {
+      return reply.code(503).send({
+        error: 'Отправка багрепортов временно недоступна: не настроен SMTP.',
+      });
+    }
+
+    const upload = await readBugReportUpload(request);
+    if ('error' in upload) {
+      return reply.code(upload.error.code).send({ error: upload.error.message });
+    }
+
+    try {
+      await sendBugReportEmail(upload);
+      return reply.send({ ok: true });
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(502).send({
+        error: 'Не удалось отправить багрепорт. Попробуйте позже.',
       });
     }
   });
