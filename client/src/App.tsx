@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import { BugReportModal } from './components/BugReportModal';
+import { useDocumentSeo } from './hooks/useDocumentSeo';
 import { usePath } from './hooks/usePath';
 import { GuidePage } from './pages/GuidePage';
 import { HomePage } from './pages/HomePage';
@@ -13,37 +14,55 @@ export default function App() {
   const isGuide = path === '/guide';
   const [bugReportOpen, setBugReportOpen] = useState(false);
   // const [toolMode, setToolMode] = useState<ToolMode>('single');
+  useDocumentSeo(path);
+
+  const onNavClick = (to: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.shiftKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    navigate(to);
+  };
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <button
-          type="button"
+        <a
+          href="/"
           className={styles.logo}
-          onClick={() => navigate('/')}
+          onClick={onNavClick('/')}
           aria-label="Fitpix.ru — на главную"
         >
           <span className={styles.logoIcon} aria-hidden>
             <img src="/icons/crop.svg" alt="" width={16} height={16} />
           </span>
           <span className={styles.logoText}>FITPIX.RU</span>
-        </button>
+        </a>
 
         <nav className={styles.tabs} aria-label="Разделы">
-          <button
-            type="button"
+          <a
+            href="/"
             className={`${styles.tab} ${!isGuide ? styles.tabActive : ''}`}
-            onClick={() => navigate('/')}
+            onClick={onNavClick('/')}
+            aria-current={!isGuide ? 'page' : undefined}
           >
             Инструмент
-          </button>
-          <button
-            type="button"
+          </a>
+          <a
+            href="/guide"
             className={`${styles.tab} ${isGuide ? styles.tabActive : ''}`}
-            onClick={() => navigate('/guide')}
+            onClick={onNavClick('/guide')}
+            aria-current={isGuide ? 'page' : undefined}
           >
             Гайд
-          </button>
+          </a>
         </nav>
 
         <div className={styles.headerRight}>

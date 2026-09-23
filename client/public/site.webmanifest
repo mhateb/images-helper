@@ -1,0 +1,24 @@
+{
+  "name": "Fitpix.ru",
+  "short_name": "Fitpix",
+  "description": "Онлайн-оптимизация картинок: WebP, AVIF, кроп и сжатие",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#0f172a",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

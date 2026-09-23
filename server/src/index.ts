@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
-import Fastify, { type FastifyRequest } from 'fastify';
+import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import JSZip from 'jszip';
 import nodemailer from 'nodemailer';
 import {
@@ -18,6 +18,12 @@ import {
   type PrepareOptions,
 } from './optimize.js';
 import { buildArtDirectionPicture } from './pictureMarkup.js';
+import {
+  SPA_PATHS,
+  applySeoToHtml,
+  normalizePath,
+  notFoundPageHtml,
+} from './seo.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -646,16 +652,47 @@ async function main() {
 
   const staticDir = resolveStaticDir();
   if (staticDir) {
+    const indexHtmlPath = join(staticDir, 'index.html');
+    const indexHtml = existsSync(indexHtmlPath)
+      ? readFileSync(indexHtmlPath, 'utf8')
+      : null;
+
     await app.register(fastifyStatic, {
       root: staticDir,
       wildcard: false,
+      index: false,
     });
+
+    const sendSpa = (pathname: string, reply: FastifyReply) => {
+      if (!indexHtml) {
+        return reply.code(500).send({ error: 'UI is not built' });
+      }
+      const html = applySeoToHtml(indexHtml, pathname);
+      return reply
+        .type('text/html; charset=utf-8')
+        .header('Cache-Control', 'no-cache')
+        .send(html);
+    };
+
+    for (const path of SPA_PATHS) {
+      app.get(path, async (_request, reply) => sendSpa(path, reply));
+    }
 
     app.setNotFoundHandler((request, reply) => {
       if (request.url.startsWith('/api/')) {
         return reply.code(404).send({ error: 'Not found' });
       }
-      return reply.sendFile('index.html');
+
+      const pathname = normalizePath(request.url);
+      if (SPA_PATHS.has(pathname) && indexHtml) {
+        return sendSpa(pathname, reply);
+      }
+
+      return reply
+        .code(404)
+        .type('text/html; charset=utf-8')
+        .header('X-Robots-Tag', 'noindex, nofollow')
+        .send(notFoundPageHtml());
     });
 
     app.log.info(`Serving static UI from ${staticDir}`);

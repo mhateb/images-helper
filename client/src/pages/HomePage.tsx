@@ -328,8 +328,18 @@ export function HomePage() {
   );
 
   return (
-    <section className={styles.layout}>
+    <section className={styles.layout} aria-labelledby="home-heading">
       <div className={styles.workspace}>
+        <header className={styles.intro}>
+          <h1 id="home-heading" className={styles.title}>
+            Онлайн-оптимизация картинок
+          </h1>
+          <p className={styles.lead}>
+            Сжатие JPEG/PNG, WebP и AVIF, авто-trim и ручной кроп — бесплатно, без
+            регистрации.
+          </p>
+        </header>
+
         {items.length === 0 ? (
           <Dropzone
             onFiles={addFiles}
