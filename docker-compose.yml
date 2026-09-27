@@ -1,6 +1,10 @@
 services:
   imageshelper:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_YM_ID: ${VITE_YM_ID:-}
+        VITE_PUBLIC_SITE_URL: ${VITE_PUBLIC_SITE_URL:-https://fitpix.ru}
     image: imageshelper:latest
     ports:
       - "${PORT:-3001}:3001"

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { trackGoal, YM_GOALS } from '../analytics/ym';
 import { sendBugReport } from '../api/bugReport';
 import styles from './BugReportModal.module.css';
 
@@ -92,6 +93,10 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
         description: text,
         contactEmail,
         screenshot,
+      });
+      trackGoal(YM_GOALS.bugReportSubmit, {
+        has_screenshot: Boolean(screenshot),
+        has_email: Boolean(contactEmail.trim()),
       });
       setSuccess(true);
       window.setTimeout(() => onClose(), 1400);

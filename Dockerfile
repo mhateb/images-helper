@@ -12,6 +12,11 @@ RUN npm ci
 FROM deps AS build
 WORKDIR /app
 
+ARG VITE_YM_ID=
+ARG VITE_PUBLIC_SITE_URL=https://fitpix.ru
+ENV VITE_YM_ID=$VITE_YM_ID \
+    VITE_PUBLIC_SITE_URL=$VITE_PUBLIC_SITE_URL
+
 COPY client ./client
 COPY server ./server
 

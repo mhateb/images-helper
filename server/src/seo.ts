@@ -36,6 +36,16 @@ const SEO_ROUTES: Record<string, SeoRoute> = {
     shellLead:
       'Форматы, брейкпоинты и тег picture: как готовить ассеты под реальные слоты в вёрстке.',
   },
+  '/privacy': {
+    path: '/privacy',
+    title: 'Политика конфиденциальности — Fitpix.ru',
+    description:
+      'Как Fitpix.ru обрабатывает изображения, cookies Яндекс.Метрики и данные из багрепортов.',
+    ogType: 'website',
+    shellHeading: 'Политика конфиденциальности',
+    shellLead:
+      'Как Fitpix обрабатывает изображения, cookies аналитики и данные багрепортов.',
+  },
 };
 
 export const SPA_PATHS = new Set(Object.keys(SEO_ROUTES));
@@ -64,6 +74,22 @@ function jsonLdFor(route: SeoRoute): Record<string, unknown> {
         url: SITE_URL,
       },
       mainEntityOfPage: absoluteUrl('/guide'),
+    };
+  }
+
+  if (route.path === '/privacy') {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: route.title,
+      description: route.description,
+      inLanguage: 'ru',
+      isPartOf: {
+        '@type': 'WebSite',
+        name: SITE_NAME,
+        url: SITE_URL,
+      },
+      mainEntityOfPage: absoluteUrl('/privacy'),
     };
   }
 
@@ -164,6 +190,7 @@ export function applySeoToHtml(html: string, pathname: string): string {
     '  <nav aria-label="Разделы">',
     '    <a href="/">Инструмент</a>',
     '    <a href="/guide">Гайд</a>',
+    '    <a href="/privacy">Конфиденциальность</a>',
     '  </nav>',
     '</div>',
   ].join('');

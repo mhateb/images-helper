@@ -67,7 +67,9 @@ export function useDocumentSeo(path: string) {
     upsertJsonLd(jsonLdForPath(path));
 
     const robots =
-      path === '/' || path === '/guide' ? 'index,follow' : 'noindex,nofollow';
+      path === '/' || path === '/guide' || path === '/privacy'
+        ? 'index,follow'
+        : 'noindex,nofollow';
     upsertMeta('name', 'robots', robots);
   }, [path]);
 }

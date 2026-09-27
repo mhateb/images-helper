@@ -27,6 +27,13 @@ export const SEO_ROUTES: Record<string, SeoRoute> = {
       'Практический гайд: форматы WebP/AVIF, брейкпоинты, source/media/srcset и подготовка ассетов под <picture> для быстрой вёрстки.',
     ogType: 'article',
   },
+  '/privacy': {
+    path: '/privacy',
+    title: 'Политика конфиденциальности — Fitpix.ru',
+    description:
+      'Как Fitpix.ru обрабатывает изображения, cookies Яндекс.Метрики и данные из багрепортов.',
+    ogType: 'website',
+  },
 };
 
 export function getSeoRoute(pathname: string): SeoRoute {
@@ -76,7 +83,26 @@ export function buildGuideJsonLd(): Record<string, unknown> {
   };
 }
 
+export function buildPrivacyJsonLd(): Record<string, unknown> {
+  const privacy = SEO_ROUTES['/privacy'];
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: privacy.title,
+    description: privacy.description,
+    inLanguage: 'ru',
+    isPartOf: {
+      '@type': 'WebSite',
+      name: SITE_NAME,
+      url: SITE_URL,
+    },
+    mainEntityOfPage: absoluteUrl('/privacy'),
+  };
+}
+
 export function jsonLdForPath(pathname: string): Record<string, unknown> {
   const normalized = pathname.replace(/\/+$/, '') || '/';
-  return normalized === '/guide' ? buildGuideJsonLd() : buildWebAppJsonLd();
+  if (normalized === '/guide') return buildGuideJsonLd();
+  if (normalized === '/privacy') return buildPrivacyJsonLd();
+  return buildWebAppJsonLd();
 }

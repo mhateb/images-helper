@@ -62,12 +62,17 @@ docker compose down
 
 | Переменная | Пример | Описание |
 |------------|--------|----------|
+| `VITE_YM_ID` | `111307897` | Номер счётчика Яндекс.Метрики (нужен на этапе **сборки** клиента) |
+| `VITE_PUBLIC_SITE_URL` | `https://fitpix.ru` | Публичный URL для SEO на клиенте |
+| `PUBLIC_SITE_URL` | `https://fitpix.ru` | Публичный URL для SEO на сервере |
 | `SMTP_HOST` | `smtp.yandex.ru` | SMTP-сервер |
 | `SMTP_PORT` | `465` | Порт (`465` = SSL) |
 | `SMTP_USER` | `you@yandex.ru` | Логин |
 | `SMTP_PASS` | пароль приложения | Не обычный пароль почты |
 | `SMTP_FROM` | опционально | From (по умолчанию = `SMTP_USER`) |
 | `BUG_REPORT_TO` | `maaaslanov@gmail.com` | Куда слать багрепорты |
+
+Аналитика грузится только после согласия в cookie-баннере. В кабинете Метрики создайте цели типа «JavaScript-событие» с идентификаторами: `file_upload`, `optimize_start`, `optimize_success`, `optimize_error`, `download`, `guide_open`, `bug_report_open`, `bug_report_submit`, `queue_limit`.
 
 Яндекс: [пароль приложения](https://id.yandex.ru/security/app-passwords) для «Почта», затем `npm run dev`.  
 В Docker те же переменные подхватываются из `.env` рядом с `docker-compose.yml`. Без SMTP эндпоинт отвечает `503`.

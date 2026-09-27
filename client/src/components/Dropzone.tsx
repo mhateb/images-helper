@@ -4,8 +4,10 @@ import styles from './Dropzone.module.css';
 const MAX_BYTES = 30 * 1024 * 1024;
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif,image/gif';
 
+export type UploadSource = 'drop' | 'picker';
+
 interface DropzoneProps {
-  onFiles: (files: File[]) => void;
+  onFiles: (files: File[], source: UploadSource) => void;
   multiple?: boolean;
   title?: string;
   hint?: string;
@@ -28,7 +30,7 @@ export function Dropzone({
   const [error, setError] = useState<string | null>(null);
 
   const handleFiles = useCallback(
-    (list: FileList | File[] | null | undefined) => {
+    (list: FileList | File[] | null | undefined, source: UploadSource) => {
       if (!list || list.length === 0) return;
 
       const incoming = Array.from(list);
@@ -66,7 +68,7 @@ export function Dropzone({
         setError(null);
       }
 
-      onFiles(multiple ? accepted : accepted.slice(0, 1));
+      onFiles(multiple ? accepted : accepted.slice(0, 1), source);
     },
     [multiple, onFiles],
   );
@@ -74,7 +76,7 @@ export function Dropzone({
   const onDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setDragging(false);
-    handleFiles(event.dataTransfer.files);
+    handleFiles(event.dataTransfer.files, 'drop');
   };
 
   return (
@@ -111,7 +113,7 @@ export function Dropzone({
           multiple={multiple}
           className={styles.input}
           onChange={(e) => {
-            handleFiles(e.target.files);
+            handleFiles(e.target.files, 'picker');
             e.target.value = '';
           }}
         />

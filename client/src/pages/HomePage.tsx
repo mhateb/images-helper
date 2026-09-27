@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { trackGoal, YM_GOALS } from '../analytics/ym';
 import { Cropper } from '../components/Cropper';
-import { Dropzone } from '../components/Dropzone';
+import { Dropzone, type UploadSource } from '../components/Dropzone';
 import { OptionsPanel } from '../components/OptionsPanel';
 import { ResultPanel } from '../components/ResultPanel';
 import { downloadAllFormats, downloadResultsZip, optimizeImage } from '../api/optimize';
@@ -53,6 +54,11 @@ function sortFormats(formats: OutputFormat[]): OutputFormat[] {
   return FORMAT_ORDER.filter((format) => formats.includes(format));
 }
 
+function mimeSummary(files: File[]): string {
+  const types = [...new Set(files.map((file) => formatLabel(file.type)))];
+  return types.slice(0, 5).join(',');
+}
+
 function pickPreviewFormat(
   results: OptimizeResult[],
   preferred?: OutputFormat | null,
@@ -101,12 +107,17 @@ export function HomePage() {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }, []);
 
-  const addFiles = useCallback(async (files: File[]) => {
+  const addFiles = useCallback(async (files: File[], source: UploadSource = 'picker') => {
     if (files.length === 0) return;
 
     const remaining = MAX_FILES - itemsRef.current.length;
     if (remaining <= 0) {
       setQueueNotice(`Не больше ${MAX_FILES} файлов за раз. Удалите лишние или очистите очередь.`);
+      trackGoal(YM_GOALS.queueLimit, {
+        files_count: files.length,
+        queue_size: itemsRef.current.length,
+        source,
+      });
       return;
     }
 
@@ -115,6 +126,12 @@ export function HomePage() {
       setQueueNotice(
         `Добавлено ${accepted.length} из ${files.length}: лимит ${MAX_FILES} файлов за раз.`,
       );
+      trackGoal(YM_GOALS.queueLimit, {
+        files_count: files.length,
+        accepted_count: accepted.length,
+        queue_size: itemsRef.current.length,
+        source,
+      });
     } else {
       setQueueNotice(null);
     }
@@ -131,6 +148,12 @@ export function HomePage() {
 
     setItems((prev) => [...prev, ...created]);
     setActiveId((prev) => prev ?? created[0].id);
+
+    trackGoal(YM_GOALS.fileUpload, {
+      files_count: accepted.length,
+      source,
+      mime_types: mimeSummary(accepted),
+    });
 
     for (const item of created) {
       try {
@@ -184,6 +207,16 @@ export function HomePage() {
         : items;
       if (targets.length === 0 || busy) return;
 
+      const hasCrop = targets.some((item) => Boolean(item.crop));
+      trackGoal(YM_GOALS.optimizeStart, {
+        files_count: targets.length,
+        formats: selected.join(','),
+        quality,
+        trim,
+        resize,
+        has_crop: hasCrop,
+      });
+
       setBusy(true);
       const total = targets.length * selected.length;
       setProgress({ done: 0, total });
@@ -191,7 +224,13 @@ export function HomePage() {
       setFormats(selected);
       setPreviewFormat(selected[0]);
 
+      const startedAt = performance.now();
       let done = 0;
+      let okCount = 0;
+      let failCount = 0;
+      let originalBytes = 0;
+      let optimizedBytes = 0;
+
       for (const item of targets) {
         const nextResults: OptimizeResult[] = [];
         let lastError: string | null = null;
@@ -208,6 +247,8 @@ export function HomePage() {
               crop: item.crop,
             });
             nextResults.push(data);
+            originalBytes += data.originalSize;
+            optimizedBytes += data.optimizedSize;
           } catch (error) {
             lastError =
               error instanceof Error
@@ -217,6 +258,12 @@ export function HomePage() {
 
           done += 1;
           setProgress({ done, total });
+        }
+
+        if (nextResults.length > 0) {
+          okCount += 1;
+        } else {
+          failCount += 1;
         }
 
         setItems((prev) =>
@@ -234,6 +281,37 @@ export function HomePage() {
 
       setBusy(false);
       setProgress(null);
+
+      const durationMs = Math.round(performance.now() - startedAt);
+      const savedBytes = Math.max(0, originalBytes - optimizedBytes);
+      const savedPct =
+        originalBytes > 0 ? Math.round((savedBytes / originalBytes) * 100) : 0;
+
+      if (okCount > 0) {
+        trackGoal(YM_GOALS.optimizeSuccess, {
+          files_count: targets.length,
+          formats: selected.join(','),
+          ok_count: okCount,
+          fail_count: failCount,
+          original_bytes: originalBytes,
+          optimized_bytes: optimizedBytes,
+          saved_bytes: savedBytes,
+          saved_pct: savedPct,
+          duration_ms: durationMs,
+          has_crop: hasCrop,
+        });
+      }
+
+      if (failCount > 0) {
+        trackGoal(YM_GOALS.optimizeError, {
+          files_count: targets.length,
+          formats: selected.join(','),
+          ok_count: okCount,
+          fail_count: failCount,
+          error_stage: 'api',
+          duration_ms: durationMs,
+        });
+      }
     },
     [busy, formats, items, quality, resize, resizeMaxWidth, trim],
   );
@@ -241,6 +319,7 @@ export function HomePage() {
   const onDownload = async () => {
     if (!active || active.results.length === 0) return;
     const base = active.file.name.replace(/\.[^.]+$/, '') || 'image';
+    const formatsList = active.results.map((result) => result.format).join(',');
 
     if (active.results.length === 1) {
       const result = active.results[0];
@@ -248,6 +327,11 @@ export function HomePage() {
       link.href = result.url;
       link.download = `${base}.${result.extension}`;
       link.click();
+      trackGoal(YM_GOALS.download, {
+        download_type: 'single',
+        files_count: 1,
+        formats: formatsList,
+      });
       return;
     }
 
@@ -262,6 +346,11 @@ export function HomePage() {
         })),
         `${base}.zip`,
       );
+      trackGoal(YM_GOALS.download, {
+        download_type: 'active_zip',
+        files_count: 1,
+        formats: formatsList,
+      });
     } catch (error) {
       setDownloadAllError(
         error instanceof Error ? error.message : 'Не удалось собрать ZIP.',
@@ -283,6 +372,11 @@ export function HomePage() {
         resize,
         resizeMaxWidth,
         crop: active.crop,
+      });
+      trackGoal(YM_GOALS.download, {
+        download_type: 'all_formats',
+        files_count: 1,
+        formats: 'optimized,webp,avif',
       });
     } catch (error) {
       setDownloadAllError(
@@ -310,6 +404,14 @@ export function HomePage() {
           }));
         }),
       );
+      const formatsList = [
+        ...new Set(ready.flatMap((item) => item.results.map((result) => result.format))),
+      ].join(',');
+      trackGoal(YM_GOALS.download, {
+        download_type: 'queue_zip',
+        files_count: ready.length,
+        formats: formatsList,
+      });
     } catch (error) {
       setDownloadAllError(
         error instanceof Error ? error.message : 'Не удалось собрать ZIP с результатами.',
