@@ -23,10 +23,11 @@ type YmQueue = {
 declare global {
   interface Window {
     ym?: YmQueue;
+    /** Injected by server from runtime env (Amvera "Запуск"). */
+    __FITPIX_YM_ID__?: number;
   }
 }
 
-const COUNTER_ID = Number(import.meta.env.VITE_YM_ID || 0);
 const TAG_SRC = 'https://mc.yandex.ru/metrika/tag.js';
 
 let initPromise: Promise<boolean> | null = null;
@@ -34,7 +35,10 @@ let initialized = false;
 let lastHitUrl: string | null = null;
 
 function counterId(): number {
-  return Number.isFinite(COUNTER_ID) && COUNTER_ID > 0 ? COUNTER_ID : 0;
+  const fromRuntime = Number(window.__FITPIX_YM_ID__ ?? 0);
+  if (Number.isFinite(fromRuntime) && fromRuntime > 0) return fromRuntime;
+  const fromBuild = Number(import.meta.env.VITE_YM_ID || 0);
+  return Number.isFinite(fromBuild) && fromBuild > 0 ? fromBuild : 0;
 }
 
 export function hasYmCounter(): boolean {

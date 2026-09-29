@@ -151,6 +151,32 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
+/** Yandex Metrika counter from runtime env (Amvera "Запуск" vars). */
+export function resolveYmCounterId(): number {
+  const raw = process.env.VITE_YM_ID || process.env.YM_ID || '';
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? Math.trunc(id) : 0;
+}
+
+function injectYmRuntimeConfig(html: string): string {
+  const id = resolveYmCounterId();
+  const script =
+    id > 0
+      ? `<script id="fitpix-ym-config">window.__FITPIX_YM_ID__=${id};</script>`
+      : '';
+
+  if (/id="fitpix-ym-config"/.test(html)) {
+    return html.replace(
+      /<script[^>]*id="fitpix-ym-config"[^>]*>[\s\S]*?<\/script>/i,
+      script,
+    );
+  }
+
+  if (!script) return html;
+  // Classic inline script before </head> runs before deferred module scripts.
+  return html.replace('</head>', `    ${script}\n  </head>`);
+}
+
 export function applySeoToHtml(html: string, pathname: string): string {
   const path = normalizePath(pathname);
   const route = SEO_ROUTES[path] ?? SEO_ROUTES['/'];
@@ -183,6 +209,8 @@ export function applySeoToHtml(html: string, pathname: string): string {
     );
   }
 
+  next = injectYmRuntimeConfig(next);
+
   const shell = [
     '<div data-seo-shell>',
     `  <h1>${escapeHtml(route.shellHeading)}</h1>`,
@@ -195,12 +223,40 @@ export function applySeoToHtml(html: string, pathname: string): string {
     '</div>',
   ].join('');
 
-  next = next.replace(
-    /<div id="root">[\s\S]*?<\/div>/i,
-    `<div id="root">${shell}</div>`,
-  );
+  next = replaceRootInner(next, shell);
 
   return next;
+}
+
+/** Replace #root inner HTML, matching nested closing </div> tags. */
+function replaceRootInner(html: string, inner: string): string {
+  const open = '<div id="root">';
+  const start = html.indexOf(open);
+  if (start === -1) return html;
+
+  const innerStart = start + open.length;
+  let depth = 1;
+  let i = innerStart;
+
+  while (i < html.length && depth > 0) {
+    const nextOpen = html.indexOf('<div', i);
+    const nextClose = html.indexOf('</div>', i);
+    if (nextClose === -1) break;
+
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      depth += 1;
+      i = nextOpen + 4;
+      continue;
+    }
+
+    depth -= 1;
+    if (depth === 0) {
+      return `${html.slice(0, innerStart)}${inner}${html.slice(nextClose)}`;
+    }
+    i = nextClose + 6;
+  }
+
+  return html;
 }
 
 export function notFoundPageHtml(): string {

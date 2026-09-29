@@ -13,6 +13,7 @@ services:
       HOST: 0.0.0.0
       STATIC_DIR: /app/client/dist
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-https://fitpix.ru}
+      VITE_YM_ID: ${VITE_YM_ID:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_USER: ${SMTP_USER:-}
