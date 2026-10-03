@@ -31,7 +31,7 @@ export const SEO_ROUTES: Record<string, SeoRoute> = {
     path: '/privacy',
     title: 'Политика конфиденциальности — Fitpix.ru',
     description:
-      'Как Fitpix.ru обрабатывает изображения, cookies Яндекс.Метрики и данные из багрепортов.',
+      'Как Fitpix.ru обрабатывает изображения, cookies Яндекс.Метрики и сообщения о проблемах.',
     ogType: 'website',
   },
 };

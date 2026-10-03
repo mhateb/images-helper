@@ -100,9 +100,10 @@
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1.25;
   cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease;
-  white-space: nowrap;
+  text-align: center;
 }
 
 .bugReport:hover {

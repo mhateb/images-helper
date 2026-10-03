@@ -101,7 +101,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
       setSuccess(true);
       window.setTimeout(() => onClose(), 1400);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось отправить багрепорт');
+      setError(err instanceof Error ? err.message : 'Не удалось отправить сообщение');
     } finally {
       setSending(false);
     }
@@ -123,7 +123,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
       >
         <div className={styles.head}>
           <div>
-            <h2 id={titleId}>Сообщить о баге</h2>
+            <h2 id={titleId}>Сообщить о проблеме</h2>
             <p>Кратко опишите, что случилось. Скриншот очень поможет.</p>
           </div>
           <button
@@ -207,7 +207,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
           </div>
 
           {error ? <p className={styles.error}>{error}</p> : null}
-          {success ? <p className={styles.success}>Спасибо! Багрепорт отправлен.</p> : null}
+          {success ? <p className={styles.success}>Спасибо! Сообщение отправлено.</p> : null}
 
           <div className={styles.actions}>
             <button

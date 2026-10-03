@@ -86,7 +86,7 @@ export default function App() {
               setBugReportOpen(true);
             }}
           >
-            Багрепорт
+            Сообщить о проблеме
           </button>
           <div className={styles.status}>
             <span className={styles.statusDot} aria-hidden />

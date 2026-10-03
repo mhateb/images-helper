@@ -89,9 +89,9 @@ function isSmtpConfigured(): boolean {
 
 async function sendBugReportEmail(report: BugReportUpload): Promise<void> {
   const preview = report.description.slice(0, 80).replace(/\s+/g, ' ');
-  const subject = `[Fitpix] Багрепорт: ${preview}${report.description.length > 80 ? '…' : ''}`;
+  const subject = `[Fitpix] Проблема: ${preview}${report.description.length > 80 ? '…' : ''}`;
   const text = [
-    'Новый багрепорт с Fitpix',
+    'Новое сообщение о проблеме с Fitpix',
     '',
     `Страница: ${report.pageUrl || '—'}`,
     `Контакт: ${report.contactEmail || 'не указан'}`,
@@ -557,7 +557,7 @@ async function main() {
   app.post('/api/bug-report', async (request, reply) => {
     if (!isSmtpConfigured()) {
       return reply.code(503).send({
-        error: 'Отправка багрепортов временно недоступна: не настроен SMTP.',
+        error: 'Отправка сообщений временно недоступна: не настроен SMTP.',
       });
     }
 
@@ -572,7 +572,7 @@ async function main() {
     } catch (error) {
       request.log.error(error);
       return reply.code(502).send({
-        error: 'Не удалось отправить багрепорт. Попробуйте позже.',
+        error: 'Не удалось отправить сообщение. Попробуйте позже.',
       });
     }
   });

@@ -32,6 +32,6 @@ export async function sendBugReport(params: BugReportParams): Promise<void> {
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Не удалось отправить багрепорт'));
+    throw new Error(await readErrorMessage(response, 'Не удалось отправить сообщение'));
   }
 }
