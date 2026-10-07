@@ -114,13 +114,13 @@ function ExampleDirol() {
       <figure className={styles.figure}>
         <img
           src="/guide/example-crop.png"
-          alt="Кроп пачки Dirol: рамка вокруг жвачки на большом белом фоне"
+          alt="Обрезка пачки Dirol: рамка вокруг жвачки на большом белом фоне"
           className={styles.figureImg}
           loading="lazy"
         />
         <figcaption>
-          Кропом обрезаем до пачки — на сервер уйдёт только нужная область, потом trim и
-          resize.
+          Обрезаем до пачки — на сервер уйдёт только нужная область, потом автообрезка краёв и
+          изменение размера.
         </figcaption>
       </figure>
 
@@ -133,7 +133,7 @@ function ExampleDirol() {
 
       <h3 className={styles.sub}>3. Как ресайзим</h3>
       <ol className={styles.steps}>
-        <li>Кроп по контуру пачки (как на кадре выше).</li>
+        <li>Обрезка по контуру пачки (как на кадре выше).</li>
         <li>
           Включаем Resize. Макс. ширина ={' '}
           <code className={styles.code}>300 × 2 = 600</code> — запас под retina (DPR 2).
@@ -205,7 +205,7 @@ function BasicsTab() {
         <h2>Типичный сценарий</h2>
         <ol className={styles.steps}>
           <li>Загрузите исходник (фото, экспорт из Figma, скрин).</li>
-          <li>Кропом уберите лишнее — отдельно под mobile и под md+ при разной композиции.</li>
+          <li>Обрезкой уберите лишнее — отдельно под mobile и под md+ при разной композиции.</li>
           <li>
             Resize под ширины лестницы (часто {BP.md} / {BP.lg} / {BP.xl} и ×2) — вкладка{' '}
             <strong>srcset</strong>.
@@ -269,7 +269,7 @@ function BasicsTab() {
 
         <div className={styles.callout}>
           <p>
-            «Скачать все» даёт три файла с одним кропом, resize и качеством. В проде: AVIF →
+            «Скачать все» даёт три файла с одной обрезкой, resize и качеством. В проде: AVIF →
             WebP → Optimized JPEG/PNG.
           </p>
         </div>
@@ -279,16 +279,16 @@ function BasicsTab() {
         <h2>Параметры формы</h2>
         <dl className={styles.params}>
           <div>
-            <dt>Кроп</dt>
+            <dt>Обрезка</dt>
             <dd>
-              Уберите то, чего не будет в UI. На сервере: кроп → trim → resize → сжатие. Для
+              Уберите то, чего не будет в UI. На сервере: обрезка → автообрезка краёв → изменение размера → сжатие. Для
               разных композиций mobile / md+ готовьте отдельные прогоны.
             </dd>
           </div>
           <div>
             <dt>Trim</dt>
             <dd>
-              Срезает однотонные края после кропа. Удобно для скринов; на фото с градиентом
+              Срезает однотонные края после обрезки. Удобно для скринов; на фото с градиентом
               проверяйте превью.
             </dd>
           </div>
@@ -449,7 +449,7 @@ function MediaTab() {
         <BreakpointsTable />
         <p className={styles.text}>
           <code className={styles.code}>media</code> — обычный CSS media query. Source
-          участвует только при совпадении. Так меняют кроп/композицию между mobile, tablet
+          участвует только при совпадении. Так меняют обрезку/композицию между mobile, tablet
           (md), tablet-lg (lg) и desktop (xl) — не просто тот же файл помельче.
         </p>
       </section>
@@ -500,7 +500,7 @@ function MediaTab() {
       <section className={styles.section}>
         <h2>Пример: арт-директинг mobile / md+ </h2>
         <p className={styles.text}>
-          Частый кейс — другой кроп до md и общий кадр с md и выше. Внутри каждого media —
+          Частый кейс — другая обрезка до md и общий кадр с md и выше. Внутри каждого media —
           AVIF → WebP → JPEG.
         </p>
 
@@ -597,7 +597,7 @@ function MediaTab() {
           <div className={styles.card}>
             <h3>Нужен media</h3>
             <p>
-              На mobile другой кроп, на md — ещё один, на xl — третий. Или другое изображение
+              На mobile другая обрезка, на md — ещё одна, на xl — третий. Или другое изображение
               целиком. Srcset кадр не меняет.
             </p>
           </div>
@@ -628,11 +628,11 @@ function MediaTab() {
         <h2>Как готовить файлы в туле</h2>
         <ol className={styles.steps}>
           <li>
-            Исходник → кроп под <strong>mobile</strong> → Resize (см. srcset) → «Скачать все»
+            Исходник → обрезка под <strong>mobile</strong> → Resize (см. srcset) → «Скачать все»
             → <code className={styles.code}>*-mobile.*</code>.
           </li>
           <li>
-            При необходимости отдельные кропы для <strong>md</strong>, <strong>lg</strong>,{' '}
+            При необходимости отдельные обрезки для <strong>md</strong>, <strong>lg</strong>,{' '}
             <strong>xl</strong> — каждый своим ZIP с суффиксом{' '}
             <code className={styles.code}>*-md|lg|xl.*</code>.
           </li>
@@ -787,7 +787,7 @@ function SrcsetTab() {
       <section className={styles.section}>
         <h2>Прогон в туле</h2>
         <ol className={styles.steps}>
-          <li>Один кроп и trim на всю лестницу (одна композиция).</li>
+          <li>Одна обрезка и автообрезка краёв на всю лестницу (одна композиция).</li>
           <li>
             Resize = {BP.md} → «Скачать все» →{' '}
             <code className={styles.code}>{`name-${BP.md}.avif|webp|jpg`}</code>.
@@ -815,7 +815,7 @@ function SrcsetTab() {
       <section className={styles.section}>
         <h2>media + srcset вместе</h2>
         <p className={styles.text}>
-          Разный кроп на mobile и md+ — вкладка <strong>media</strong>. Внутри каждого media
+          Разная обрезка на mobile и md+ — вкладка <strong>media</strong>. Внутри каждого media
           можно дать свою лестницу{' '}
           <code className={styles.code}>{`${BP.md}w, ${BP.lg}w…`}</code>, если слот сильно
           гуляет внутри диапазона. Часто для mobile хватает 1–2 ширин, для md+ — полной
@@ -833,7 +833,7 @@ function SrcsetTab() {
             Слот маленький — не тащите hero {BP.xl * 2} «на будущее».
           </li>
           <li>
-            Разные кропы mobile / md / lg / xl — сначала media-композиции, потом ресайз
+            Разные обрезки mobile / md / lg / xl — сначала media-композиции, потом ресайз
             каждой.
           </li>
           <li>

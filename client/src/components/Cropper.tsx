@@ -94,7 +94,7 @@ export function Cropper({ imageUrl, initialCrop, onCropChange }: CropperProps) {
           <img
             ref={imgRef}
             src={imageUrl}
-            alt="Изображение для кропа"
+            alt="Изображение для обрезки"
             onLoad={onImageLoad}
             className={styles.image}
           />

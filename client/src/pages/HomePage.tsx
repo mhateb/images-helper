@@ -437,7 +437,7 @@ export function HomePage() {
             Онлайн-оптимизация картинок
           </h1>
           <p className={styles.lead}>
-            Сжатие JPEG/PNG, WebP и AVIF, авто-trim и ручной кроп — бесплатно, без
+            Сжатие JPEG/PNG, WebP и AVIF, ручная обрезка и автообрезка краёв — бесплатно, без
             регистрации.
           </p>
         </header>
@@ -554,10 +554,11 @@ export function HomePage() {
 
             <div className={styles.block}>
               <div className={styles.blockHead}>
-                <h2>Кроп</h2>
+                <h2>Обрезка</h2>
                 <p>
-                  Потяните границы рамки — кроп уйдёт на сервер первым, затем trim.
-                  {items.length > 1 ? ' Для каждой картинки свой кроп.' : ''}
+                  Потяните границы рамки — выделенная область отправится на сервер первой, затем
+                  автообрезка краёв.
+                  {items.length > 1 ? ' Для каждой картинки своя область.' : ''}
                 </p>
               </div>
               <Cropper

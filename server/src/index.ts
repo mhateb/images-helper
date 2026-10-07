@@ -503,7 +503,7 @@ async function main() {
     } catch (error) {
       request.log.error(error);
       return reply.code(422).send({
-        error: 'Не удалось обработать изображение. Проверьте файл и параметры кропа.',
+        error: 'Не удалось обработать изображение. Проверьте файл и параметры обрезки.',
       });
     }
   });
@@ -549,7 +549,7 @@ async function main() {
     } catch (error) {
       request.log.error(error);
       return reply.code(422).send({
-        error: 'Не удалось обработать изображение. Проверьте файл и параметры кропа.',
+        error: 'Не удалось обработать изображение. Проверьте файл и параметры обрезки.',
       });
     }
   });
@@ -645,7 +645,7 @@ async function main() {
     } catch (error) {
       request.log.error(error);
       return reply.code(422).send({
-        error: 'Не удалось обработать изображение. Проверьте файл и параметры кропа.',
+        error: 'Не удалось обработать изображение. Проверьте файл и параметры обрезки.',
       });
     }
   });

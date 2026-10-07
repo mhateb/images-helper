@@ -144,7 +144,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
               className={styles.textarea}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Например: после кропа скачался пустой файл…"
+              placeholder="Например: после обрезки скачался пустой файл…"
               maxLength={4000}
               required
               disabled={sending || success}

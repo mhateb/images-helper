@@ -276,11 +276,11 @@ export function PicturePage() {
           <div className={appStyles.toolbar}>
             <div>
               <p className={appStyles.fileName}>
-                Активный кроп: <strong>{activeToken}</strong>
+                Активная обрезка: <strong>{activeToken}</strong>
                 {activeSlot ? ` · ${activeSlot.file.name}` : ''}
               </p>
               <p className={appStyles.fileMeta}>
-                Кроп свой для каждого брейкпоинта. xl обязателен, md/lg — по желанию.
+                Обрезка своя для каждого брейкпоинта. xl обязателен, md/lg — по желанию.
               </p>
             </div>
             <button type="button" className={appStyles.reset} onClick={onReset}>
@@ -294,7 +294,7 @@ export function PicturePage() {
             {activeSlot ? (
               <div className={appStyles.block}>
                 <div className={appStyles.blockHead}>
-                  <h2>Кроп · {activeToken}</h2>
+                  <h2>Обрезка · {activeToken}</h2>
                   <p>
                     Рамка только для этого кадра. Цель: {BP[activeToken]}px (1x) и{' '}
                     {BP[activeToken] * 2}px (2x).
@@ -318,7 +318,7 @@ export function PicturePage() {
             ) : (
               <div className={appStyles.block}>
                 <div className={appStyles.blockHead}>
-                  <h2>Кроп</h2>
+                  <h2>Обрезка</h2>
                   <p>Сначала загрузите xl — затем при необходимости md и lg.</p>
                 </div>
               </div>
@@ -390,7 +390,7 @@ export function PicturePage() {
             <label className={styles.toggleRow}>
               <div>
                 <span className={styles.label}>Trim</span>
-                <p>Авто-обрезка пустых краёв после кропа (для каждого кадра).</p>
+                <p>Автообрезка пустых краёв после ручной обрезки (для каждого кадра).</p>
               </div>
               <button
                 type="button"

@@ -1,6 +1,6 @@
 # Images Helper
 
-Инструмент для оптимизации картинок: сжатие, WebP/AVIF, авто-trim и ручной кроп.
+Инструмент для оптимизации картинок: сжатие, WebP/AVIF, ручная обрезка и автообрезка краёв.
 
 ## Стек
 
@@ -120,7 +120,7 @@ images.example.ru {
 ## Возможности
 
 - Загрузка изображения до **30 МБ** (JPEG, PNG, WebP, AVIF, GIF)
-- Ручной кроп на превью
+- Ручная обрезка на превью
 - Авто-trim пустых/однотонных краёв
 - Форматы результата: Optimized / WebP / AVIF
 - Слайдер качества, сравнение размеров, скачивание
@@ -134,6 +134,6 @@ images.example.ru {
 | `format` | `optimized` \| `webp` \| `avif` |
 | `trim` | `true` / `false` |
 | `quality` | 1–100 |
-| `cropX`, `cropY`, `cropWidth`, `cropHeight` | область кропа в пикселях исходника |
+| `cropX`, `cropY`, `cropWidth`, `cropHeight` | область обрезки в пикселях исходника |
 
 Ответ — бинарный файл и заголовки `X-Original-Size`, `X-Optimized-Size`, `X-Width`, `X-Height`, `X-Extension`.

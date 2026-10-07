@@ -1,7 +1,7 @@
 {
   "name": "Fitpix.ru",
   "short_name": "Fitpix",
-  "description": "Онлайн-оптимизация картинок: WebP, AVIF, кроп и сжатие",
+  "description": "Онлайн-оптимизация картинок: WebP, AVIF, обрезка и сжатие",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fafafa",
