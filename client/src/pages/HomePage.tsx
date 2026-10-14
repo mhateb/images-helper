@@ -94,6 +94,16 @@ export function HomePage() {
     [activeId, items],
   );
 
+  const originalWidth = useMemo(() => {
+    const natural = active?.dimensions?.w;
+    if (natural != null && natural > 0) return natural;
+    return null;
+  }, [active?.dimensions?.w]);
+
+  useEffect(() => {
+    if (originalWidth != null) setResizeMaxWidth(originalWidth);
+  }, [active?.id, originalWidth]);
+
   useEffect(() => {
     return () => {
       for (const item of itemsRef.current) {
@@ -606,6 +616,7 @@ export function HomePage() {
         onTrimChange={setTrim}
         onResizeChange={setResize}
         onResizeMaxWidthChange={setResizeMaxWidth}
+        originalWidth={originalWidth ?? undefined}
         onQualityChange={setQuality}
         onOptimize={() => void runOptimize(formats)}
       />

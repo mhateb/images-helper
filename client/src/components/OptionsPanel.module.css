@@ -155,32 +155,6 @@
   gap: 0.75rem;
 }
 
-.resizeHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.lockBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.lockBadge img {
-  width: 12px;
-  height: 12px;
-}
-
 .inputField {
   display: flex;
   flex-direction: column;
@@ -320,10 +294,6 @@
     max-width: none;
     padding: 1.5rem;
     gap: 1.25rem;
-  }
-
-  .lockBadge {
-    font-size: 0.5rem;
   }
 }
 

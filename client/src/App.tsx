@@ -88,10 +88,6 @@ export default function App() {
           >
             Сообщить о проблеме
           </button>
-          <div className={styles.status}>
-            <span className={styles.statusDot} aria-hidden />
-            <span className={styles.statusText}>v1.2.0 АКТИВЕН</span>
-          </div>
         </div>
       </header>
 

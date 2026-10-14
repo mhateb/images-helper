@@ -483,7 +483,7 @@ async function main() {
         ...prepareOptionsFromFields(fields),
       });
 
-      const baseName = filename.replace(/\.[^.]+$/, '') || 'image';
+      const baseName = sanitizeBaseName(filename, 'image');
 
       reply
         .header('Content-Type', result.contentType)
@@ -515,7 +515,7 @@ async function main() {
     }
 
     const { buffer, filename, fields } = upload;
-    const baseName = filename.replace(/\.[^.]+$/, '') || 'image';
+    const baseName = sanitizeBaseName(filename, 'image');
 
     try {
       const variants = await optimizeAllFormats(

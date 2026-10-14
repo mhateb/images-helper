@@ -6,6 +6,7 @@ interface OptionsPanelProps {
   trim: boolean;
   resize: boolean;
   resizeMaxWidth: number;
+  originalWidth?: number;
   quality: number;
   busy: boolean;
   disabled?: boolean;
@@ -30,6 +31,7 @@ export function OptionsPanel({
   trim,
   resize,
   resizeMaxWidth,
+  originalWidth,
   quality,
   busy,
   disabled = false,
@@ -126,13 +128,7 @@ export function OptionsPanel({
       <div className={styles.divider} />
 
       <div className={styles.resizeBlock}>
-        <div className={styles.resizeHead}>
-          <p className={styles.rowTitle}>Изменение размера</p>
-          <span className={styles.lockBadge}>
-            <img src="/icons/lock.svg" alt="" width={12} height={12} />
-            СОХРАНЯТЬ ПРОПОРЦИИ
-          </span>
-        </div>
+        <p className={styles.rowTitle}>Изменение размера</p>
 
         <div className={styles.toggleRow}>
           <div>
@@ -160,7 +156,11 @@ export function OptionsPanel({
                 max={10000}
                 step={1}
                 value={resizeMaxWidth}
-                onChange={(e) => onResizeMaxWidthChange(Number(e.target.value) || 1920)}
+                onChange={(e) =>
+                  onResizeMaxWidthChange(
+                    Number(e.target.value) || originalWidth || 1920,
+                  )
+                }
                 disabled={disabled}
               />
               <span className={styles.unit}>PX</span>
