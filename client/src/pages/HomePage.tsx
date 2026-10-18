@@ -59,6 +59,26 @@ function mimeSummary(files: File[]): string {
   return types.slice(0, 5).join(',');
 }
 
+/** Keep Metrika visit-param values within a safe length. */
+function fileNamesSummary(names: string[], maxLen = 200): string {
+  if (names.length === 0) return '';
+  if (names.length === 1) return names[0].slice(0, maxLen);
+
+  const joined = names.join(',');
+  if (joined.length <= maxLen) return joined;
+
+  const kept: string[] = [];
+  let len = 0;
+  for (const name of names) {
+    const next = kept.length === 0 ? name : `,${name}`;
+    if (len + next.length > maxLen - 12) break;
+    kept.push(name);
+    len += next.length;
+  }
+  const rest = names.length - kept.length;
+  return rest > 0 ? `${kept.join(',')},+${rest}` : kept.join(',');
+}
+
 function pickPreviewFormat(
   results: OptimizeResult[],
   preferred?: OutputFormat | null,
@@ -240,6 +260,7 @@ export function HomePage() {
       let failCount = 0;
       let originalBytes = 0;
       let optimizedBytes = 0;
+      const okFileNames: string[] = [];
 
       for (const item of targets) {
         const nextResults: OptimizeResult[] = [];
@@ -272,6 +293,7 @@ export function HomePage() {
 
         if (nextResults.length > 0) {
           okCount += 1;
+          okFileNames.push(item.file.name);
         } else {
           failCount += 1;
         }
@@ -309,6 +331,7 @@ export function HomePage() {
           saved_pct: savedPct,
           duration_ms: durationMs,
           has_crop: hasCrop,
+          file_name: fileNamesSummary(okFileNames),
         });
       }
 
