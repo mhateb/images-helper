@@ -27,6 +27,13 @@ export const SEO_ROUTES: Record<string, SeoRoute> = {
       'Практический гайд: форматы WebP/AVIF, брейкпоинты, source/media/srcset и подготовка ассетов под <picture> для быстрой вёрстки.',
     ogType: 'article',
   },
+  '/analyze': {
+    path: '/analyze',
+    title: 'Анализ изображений сайта — Fitpix.ru',
+    description:
+      'Вставьте URL страницы: Fitpix найдёт картинки, оценит их вес и покажет, сколько можно сэкономить за счёт оптимизации WebP.',
+    ogType: 'website',
+  },
   '/privacy': {
     path: '/privacy',
     title: 'Политика конфиденциальности — Fitpix.ru',
@@ -100,9 +107,34 @@ export function buildPrivacyJsonLd(): Record<string, unknown> {
   };
 }
 
+export function buildAnalyzeJsonLd(): Record<string, unknown> {
+  const analyze = SEO_ROUTES['/analyze'];
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'Анализ изображений сайта — Fitpix.ru',
+    url: absoluteUrl('/analyze'),
+    applicationCategory: 'MultimediaApplication',
+    operatingSystem: 'Any',
+    inLanguage: 'ru',
+    description: analyze.description,
+    isPartOf: {
+      '@type': 'WebSite',
+      name: SITE_NAME,
+      url: SITE_URL,
+    },
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'RUB',
+    },
+  };
+}
+
 export function jsonLdForPath(pathname: string): Record<string, unknown> {
   const normalized = pathname.replace(/\/+$/, '') || '/';
   if (normalized === '/guide') return buildGuideJsonLd();
+  if (normalized === '/analyze') return buildAnalyzeJsonLd();
   if (normalized === '/privacy') return buildPrivacyJsonLd();
   return buildWebAppJsonLd();
 }

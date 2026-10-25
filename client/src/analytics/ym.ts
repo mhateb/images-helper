@@ -12,6 +12,12 @@ export const YM_GOALS = {
   bugReportOpen: 'bug_report_open',
   bugReportSubmit: 'bug_report_submit',
   queueLimit: 'queue_limit',
+  analyzeStart: 'analyze_start',
+  analyzeSuccess: 'analyze_success',
+  analyzeError: 'analyze_error',
+  analyzeZipStart: 'analyze_zip_start',
+  analyzeZipSuccess: 'analyze_zip_success',
+  analyzeZipError: 'analyze_zip_error',
 } as const;
 
 type YmQueue = {

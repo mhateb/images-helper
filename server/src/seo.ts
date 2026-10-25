@@ -36,6 +36,16 @@ const SEO_ROUTES: Record<string, SeoRoute> = {
     shellLead:
       'Форматы, брейкпоинты и тег picture: как готовить ассеты под реальные слоты в вёрстке.',
   },
+  '/analyze': {
+    path: '/analyze',
+    title: 'Анализ изображений сайта — Fitpix.ru',
+    description:
+      'Вставьте URL страницы: Fitpix найдёт картинки, оценит их вес и покажет, сколько можно сэкономить за счёт оптимизации WebP.',
+    ogType: 'website',
+    shellHeading: 'Анализ изображений сайта',
+    shellLead:
+      'Проверьте страницу по URL: сколько на ней картинок и какой запас по весу даст оптимизация.',
+  },
   '/privacy': {
     path: '/privacy',
     title: 'Политика конфиденциальности — Fitpix.ru',
@@ -90,6 +100,29 @@ function jsonLdFor(route: SeoRoute): Record<string, unknown> {
         url: SITE_URL,
       },
       mainEntityOfPage: absoluteUrl('/privacy'),
+    };
+  }
+
+  if (route.path === '/analyze') {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'WebApplication',
+      name: route.shellHeading,
+      url: absoluteUrl('/analyze'),
+      applicationCategory: 'MultimediaApplication',
+      operatingSystem: 'Any',
+      inLanguage: 'ru',
+      description: route.description,
+      isPartOf: {
+        '@type': 'WebSite',
+        name: SITE_NAME,
+        url: SITE_URL,
+      },
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'RUB',
+      },
     };
   }
 
@@ -218,6 +251,7 @@ export function applySeoToHtml(html: string, pathname: string): string {
     '  <nav aria-label="Разделы">',
     '    <a href="/">Инструмент</a>',
     '    <a href="/guide">Гайд</a>',
+    '    <a href="/analyze">Анализ</a>',
     '    <a href="/privacy">Конфиденциальность</a>',
     '  </nav>',
     '</div>',

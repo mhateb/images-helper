@@ -296,9 +296,13 @@
     font-size: 0.875rem;
   }
 
+  .tabs {
+    gap: 0.15rem;
+  }
+
   .tab {
-    padding: 0 0.75rem;
-    font-size: 0.8125rem;
+    padding: 0 0.55rem;
+    font-size: 0.75rem;
   }
 
   .bugReport {

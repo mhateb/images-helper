@@ -8,6 +8,11 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import JSZip from 'jszip';
 import nodemailer from 'nodemailer';
 import {
+  ANALYZE_LIMITS,
+  analyzePage,
+  buildOptimizedZipFromUrls,
+} from './analyzePage.js';
+import {
   isAllowedMime,
   optimizeAllFormats,
   optimizeArtDirection,
@@ -19,11 +24,30 @@ import {
 } from './optimize.js';
 import { buildArtDirectionPicture } from './pictureMarkup.js';
 import {
+  releaseZipSlot,
+  takeRateLimitToken,
+  tryAcquireZipSlot,
+} from './rateLimit.js';
+import {
   SPA_PATHS,
   applySeoToHtml,
   normalizePath,
   notFoundPageHtml,
 } from './seo.js';
+
+const ANALYZE_RATE_LIMIT = 8;
+const ANALYZE_RATE_WINDOW_MS = 10 * 60 * 1000;
+const ZIP_RATE_LIMIT = 3;
+const ZIP_RATE_WINDOW_MS = 10 * 60 * 1000;
+const MAX_ACTIVE_ZIP_JOBS = 2;
+
+function clientIp(request: FastifyRequest): string {
+  const forwarded = request.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0]?.trim() || request.ip;
+  }
+  return request.ip;
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -456,6 +480,10 @@ async function main() {
       'X-Fallback-Extension',
       'X-Img-Width',
       'X-Img-Height',
+      'X-Zip-Included',
+      'X-Zip-Failed',
+      'X-Zip-Skipped-Budget',
+      'X-Zip-Requested',
     ],
   });
 
@@ -468,6 +496,117 @@ async function main() {
   });
 
   app.get('/api/health', async () => ({ ok: true }));
+
+  app.post('/api/analyze-page', async (request, reply) => {
+    const ip = clientIp(request);
+    const rate = takeRateLimitToken(
+      `analyze:${ip}`,
+      ANALYZE_RATE_LIMIT,
+      ANALYZE_RATE_WINDOW_MS,
+    );
+    if (!rate.ok) {
+      return reply
+        .code(429)
+        .header('Retry-After', String(rate.retryAfterSec))
+        .send({
+          error: `Слишком много анализов. Подождите ~${rate.retryAfterSec} сек.`,
+        });
+    }
+
+    const body = (request.body ?? {}) as { url?: unknown };
+    const rawUrl = typeof body.url === 'string' ? body.url : '';
+
+    try {
+      const result = await analyzePage(rawUrl);
+      return reply.send(result);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось проанализировать страницу.';
+      const code =
+        /локальн|внутренн|Некорректный|Укажите|Допустимы|логином/i.test(message)
+          ? 400
+          : /Превышено|ответила|разрешить|Редирект|слишком|HTML/i.test(message)
+            ? 422
+            : 502;
+      if (code >= 500) request.log.error(error);
+      return reply.code(code).send({ error: message });
+    }
+  });
+
+  app.post('/api/analyze-download-zip', async (request, reply) => {
+    const ip = clientIp(request);
+    const rate = takeRateLimitToken(`zip:${ip}`, ZIP_RATE_LIMIT, ZIP_RATE_WINDOW_MS);
+    if (!rate.ok) {
+      return reply
+        .code(429)
+        .header('Retry-After', String(rate.retryAfterSec))
+        .send({
+          error: `Слишком много загрузок архива. Подождите ~${rate.retryAfterSec} сек.`,
+        });
+    }
+
+    if (!tryAcquireZipSlot(MAX_ACTIVE_ZIP_JOBS)) {
+      return reply.code(429).send({
+        error: 'Сервер сейчас собирает другие архивы. Попробуйте через минуту.',
+      });
+    }
+
+    const body = (request.body ?? {}) as { urls?: unknown; pageUrl?: unknown };
+    const urls = Array.isArray(body.urls)
+      ? body.urls.filter((item): item is string => typeof item === 'string')
+      : [];
+
+    if (urls.length === 0) {
+      releaseZipSlot();
+      return reply.code(400).send({ error: 'Передайте список URL изображений.' });
+    }
+
+    if (urls.length > ANALYZE_LIMITS.maxZipImages) {
+      releaseZipSlot();
+      return reply.code(400).send({
+        error: `В архив можно положить не больше ${ANALYZE_LIMITS.maxZipImages} изображений.`,
+      });
+    }
+
+    try {
+      const result = await buildOptimizedZipFromUrls(urls);
+      const host =
+        typeof body.pageUrl === 'string'
+          ? (() => {
+              try {
+                return new URL(
+                  body.pageUrl.startsWith('http') ? body.pageUrl : `https://${body.pageUrl}`,
+                ).hostname.replace(/[^a-zA-Z0-9.-]+/g, '-').slice(0, 40);
+              } catch {
+                return 'site';
+              }
+            })()
+          : 'site';
+
+      reply
+        .header('Content-Type', 'application/zip')
+        .header(
+          'Content-Disposition',
+          `attachment; filename="fitpix-${host || 'site'}-webp.zip"`,
+        )
+        .header('X-Zip-Included', String(result.included))
+        .header('X-Zip-Failed', String(result.failed))
+        .header('X-Zip-Skipped-Budget', String(result.skippedBudget))
+        .header('X-Zip-Requested', String(result.requested));
+
+      return reply.send(result.zip);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось собрать архив.';
+      const code = /Нет изображений|Не удалось оптимизировать|отфильтрованы/i.test(message)
+        ? 422
+        : 502;
+      if (code >= 500) request.log.error(error);
+      return reply.code(code).send({ error: message });
+    } finally {
+      releaseZipSlot();
+    }
+  });
 
   app.post('/api/optimize', async (request, reply) => {
     const upload = await readOptimizeUpload(request);

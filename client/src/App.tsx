@@ -6,6 +6,7 @@ import { ConsentBanner } from './components/ConsentBanner';
 import { useDocumentSeo } from './hooks/useDocumentSeo';
 import { usePath } from './hooks/usePath';
 import { useYandexMetrika } from './hooks/useYandexMetrika';
+import { AnalyzePage } from './pages/AnalyzePage';
 import { GuidePage } from './pages/GuidePage';
 import { HomePage } from './pages/HomePage';
 import { PrivacyPage } from './pages/PrivacyPage';
@@ -17,7 +18,9 @@ import styles from './App.module.css';
 export default function App() {
   const { path, navigate } = usePath();
   const isGuide = path === '/guide';
+  const isAnalyze = path === '/analyze';
   const isPrivacy = path === '/privacy';
+  const isHome = !isGuide && !isAnalyze && !isPrivacy;
   const [bugReportOpen, setBugReportOpen] = useState(false);
   const [consentVersion, setConsentVersion] = useState(0);
   // const [toolMode, setToolMode] = useState<ToolMode>('single');
@@ -61,9 +64,9 @@ export default function App() {
         <nav className={styles.tabs} aria-label="Разделы">
           <a
             href="/"
-            className={`${styles.tab} ${!isGuide && !isPrivacy ? styles.tabActive : ''}`}
+            className={`${styles.tab} ${isHome ? styles.tabActive : ''}`}
             onClick={onNavClick('/')}
-            aria-current={!isGuide && !isPrivacy ? 'page' : undefined}
+            aria-current={isHome ? 'page' : undefined}
           >
             Инструмент
           </a>
@@ -74,6 +77,14 @@ export default function App() {
             aria-current={isGuide ? 'page' : undefined}
           >
             Гайд
+          </a>
+          <a
+            href="/analyze"
+            className={`${styles.tab} ${isAnalyze ? styles.tabActive : ''}`}
+            onClick={onNavClick('/analyze')}
+            aria-current={isAnalyze ? 'page' : undefined}
+          >
+            Анализ
           </a>
         </nav>
 
@@ -123,6 +134,8 @@ export default function App() {
           <PrivacyPage onNavigate={navigate} />
         ) : isGuide ? (
           <GuidePage />
+        ) : isAnalyze ? (
+          <AnalyzePage />
         ) : (
           // toolMode === 'picture' ? (
           //   <PicturePage />
