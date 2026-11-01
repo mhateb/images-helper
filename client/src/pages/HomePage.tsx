@@ -7,6 +7,7 @@ import { ResultPanel } from '../components/ResultPanel';
 import { downloadAllFormats, downloadResultsZip, optimizeImage } from '../api/optimize';
 import type { CropArea, OptimizeResult, OutputFormat } from '../types';
 import { formatBytes } from '../utils/format';
+import { takeHandoffFiles } from '../utils/imageHandoff';
 import styles from './HomePage.module.css';
 
 const FORMAT_ORDER: OutputFormat[] = ['optimized', 'webp', 'avif'];
@@ -194,6 +195,12 @@ export function HomePage() {
       }
     }
   }, [updateItem]);
+
+  useEffect(() => {
+    const handed = takeHandoffFiles();
+    if (!handed || handed.length === 0) return;
+    void addFiles(handed, 'analyze');
+  }, [addFiles]);
 
   const removeItem = useCallback((id: string) => {
     setItems((prev) => {

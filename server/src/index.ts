@@ -11,6 +11,7 @@ import {
   ANALYZE_LIMITS,
   analyzePage,
   buildOptimizedZipFromUrls,
+  fetchRemoteImage,
 } from './analyzePage.js';
 import {
   isAllowedMime,
@@ -98,7 +99,7 @@ const SMTP_PORT = Number(process.env.SMTP_PORT ?? 465);
 const SMTP_USER = process.env.SMTP_USER ?? '';
 const SMTP_PASS = process.env.SMTP_PASS ?? '';
 const SMTP_FROM = process.env.SMTP_FROM ?? SMTP_USER;
-const BUG_REPORT_TO = process.env.BUG_REPORT_TO ?? 'maaaslanov@gmail.com';
+const BUG_REPORT_TO = process.env.BUG_REPORT_TO?.trim() ?? '';
 
 const SCREENSHOT_MIMES = new Set([
   'image/jpeg',
@@ -484,6 +485,8 @@ async function main() {
       'X-Zip-Failed',
       'X-Zip-Skipped-Budget',
       'X-Zip-Requested',
+      'X-Extension',
+      'X-File-Name',
     ],
   });
 
@@ -526,6 +529,63 @@ async function main() {
         /локальн|внутренн|Некорректный|Укажите|Допустимы|логином/i.test(message)
           ? 400
           : /Превышено|ответила|разрешить|Редирект|слишком|HTML/i.test(message)
+            ? 422
+            : 502;
+      if (code >= 500) request.log.error(error);
+      return reply.code(code).send({ error: message });
+    }
+  });
+
+  app.post('/api/analyze-fetch-image', async (request, reply) => {
+    const ip = clientIp(request);
+    const rate = takeRateLimitToken(`fetch-image:${ip}`, 30, ANALYZE_RATE_WINDOW_MS);
+    if (!rate.ok) {
+      return reply
+        .code(429)
+        .header('Retry-After', String(rate.retryAfterSec))
+        .send({
+          error: `Слишком много загрузок. Подождите ~${rate.retryAfterSec} сек.`,
+        });
+    }
+
+    const body = (request.body ?? {}) as { url?: unknown };
+    const rawUrl = typeof body.url === 'string' ? body.url : '';
+    if (!rawUrl.trim()) {
+      return reply.code(400).send({ error: 'Укажите URL изображения.' });
+    }
+
+    try {
+      const image = await fetchRemoteImage(rawUrl);
+      const baseName = sanitizeBaseName(image.fileName, 'image');
+      const ext =
+        image.contentType === 'image/jpeg'
+          ? 'jpg'
+          : image.contentType === 'image/png'
+            ? 'png'
+            : image.contentType === 'image/webp'
+              ? 'webp'
+              : image.contentType === 'image/avif'
+                ? 'avif'
+                : image.contentType === 'image/gif'
+                  ? 'gif'
+                  : 'bin';
+
+      reply
+        .header('Content-Type', image.contentType)
+        .header('Content-Disposition', `inline; filename="${baseName}.${ext}"`)
+        .header('X-Extension', ext)
+        .header('X-File-Name', `${baseName}.${ext}`);
+
+      return reply.send(image.buffer);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось загрузить изображение.';
+      const code =
+        /локальн|внутренн|Некорректный|Укажите|Допустимы|логином|не изображение|SVG/i.test(
+          message,
+        )
+          ? 400
+          : /Превышено|ответила|разрешить|Редирект|слишком/i.test(message)
             ? 422
             : 502;
       if (code >= 500) request.log.error(error);
@@ -694,7 +754,7 @@ async function main() {
   });
 
   app.post('/api/bug-report', async (request, reply) => {
-    if (!isSmtpConfigured()) {
+    if (!isSmtpConfigured() || !BUG_REPORT_TO) {
       return reply.code(503).send({
         error: 'Отправка сообщений временно недоступна: не настроен SMTP.',
       });

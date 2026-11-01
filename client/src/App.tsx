@@ -135,7 +135,7 @@ export default function App() {
         ) : isGuide ? (
           <GuidePage />
         ) : isAnalyze ? (
-          <AnalyzePage />
+          <AnalyzePage onNavigate={navigate} />
         ) : (
           // toolMode === 'picture' ? (
           //   <PicturePage />

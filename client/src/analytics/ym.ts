@@ -18,6 +18,7 @@ export const YM_GOALS = {
   analyzeZipStart: 'analyze_zip_start',
   analyzeZipSuccess: 'analyze_zip_success',
   analyzeZipError: 'analyze_zip_error',
+  analyzeOpenInTool: 'analyze_open_in_tool',
 } as const;
 
 type YmQueue = {

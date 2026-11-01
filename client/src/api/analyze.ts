@@ -1,3 +1,15 @@
+export type FormatEstimate = {
+  optimizedBytes: number;
+  savedBytes: number;
+  savedPercent: number;
+};
+
+export type FormatEstimates = {
+  optimized: FormatEstimate;
+  webp: FormatEstimate;
+  avif: FormatEstimate;
+};
+
 export type AnalyzedImage = {
   url: string;
   fileName: string;
@@ -5,6 +17,7 @@ export type AnalyzedImage = {
   optimizedBytes: number;
   savedBytes: number;
   savedPercent: number;
+  estimates: FormatEstimates;
   width: number;
   height: number;
   contentType: string;
@@ -23,6 +36,8 @@ export type AnalyzePageResult = {
   optimizedBytes: number;
   savedBytes: number;
   savedPercent: number;
+  estimates: FormatEstimates;
+  bestFormat: 'optimized' | 'webp' | 'avif';
   images: AnalyzedImage[];
 };
 
@@ -62,6 +77,27 @@ export async function analyzePageUrl(url: string): Promise<AnalyzePageResult> {
   }
 
   return (await response.json()) as AnalyzePageResult;
+}
+
+export async function fetchAnalyzeImage(url: string): Promise<File> {
+  const response = await fetch('/api/analyze-fetch-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Не удалось загрузить изображение'));
+  }
+
+  const blob = await response.blob();
+  const headerName = response.headers.get('X-File-Name');
+  const extension = response.headers.get('X-Extension') || 'bin';
+  const fallback = `image.${extension}`;
+  const fileName = headerName?.trim() || fallback;
+  const type = blob.type || response.headers.get('Content-Type') || 'application/octet-stream';
+
+  return new File([blob], fileName, { type });
 }
 
 export async function downloadOptimizedZip(params: {

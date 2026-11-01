@@ -4,7 +4,7 @@ import styles from './Dropzone.module.css';
 const MAX_BYTES = 30 * 1024 * 1024;
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif,image/gif';
 
-export type UploadSource = 'drop' | 'picker';
+export type UploadSource = 'drop' | 'picker' | 'analyze';
 
 interface DropzoneProps {
   onFiles: (files: File[], source: UploadSource) => void;

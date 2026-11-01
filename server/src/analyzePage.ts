@@ -2,7 +2,7 @@ import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import JSZip from 'jszip';
 import sharp from 'sharp';
-import { optimizeImage } from './optimize.js';
+import { optimizeAllFormats, optimizeImage, type OutputFormat } from './optimize.js';
 
 const PAGE_TIMEOUT_MS = 12_000;
 const IMAGE_TIMEOUT_MS = 10_000;
@@ -23,13 +23,27 @@ export const ANALYZE_LIMITS = {
   maxZipSourceBytes: MAX_ZIP_SOURCE_BYTES,
 } as const;
 
+export type FormatEstimate = {
+  optimizedBytes: number;
+  savedBytes: number;
+  savedPercent: number;
+};
+
+export type FormatEstimates = {
+  optimized: FormatEstimate;
+  webp: FormatEstimate;
+  avif: FormatEstimate;
+};
+
 export type AnalyzedImage = {
   url: string;
   fileName: string;
   originalBytes: number;
+  /** Primary estimate used for sorting / ZIP (WebP). */
   optimizedBytes: number;
   savedBytes: number;
   savedPercent: number;
+  estimates: FormatEstimates;
   width: number;
   height: number;
   contentType: string;
@@ -45,11 +59,61 @@ export type AnalyzePageResult = {
   skippedCount: number;
   truncated: boolean;
   totalBytes: number;
+  /** Primary (WebP) totals for backward-compatible fields. */
   optimizedBytes: number;
   savedBytes: number;
   savedPercent: number;
+  estimates: FormatEstimates;
+  bestFormat: OutputFormat;
   images: AnalyzedImage[];
 };
+
+function emptyEstimate(): FormatEstimate {
+  return { optimizedBytes: 0, savedBytes: 0, savedPercent: 0 };
+}
+
+function emptyEstimates(): FormatEstimates {
+  return {
+    optimized: emptyEstimate(),
+    webp: emptyEstimate(),
+    avif: emptyEstimate(),
+  };
+}
+
+function estimateFromSizes(originalBytes: number, candidateBytes: number): FormatEstimate {
+  const optimizedBytes = Math.min(candidateBytes, originalBytes);
+  const savedBytes = Math.max(0, originalBytes - optimizedBytes);
+  const savedPercent =
+    originalBytes > 0 ? Math.round((savedBytes / originalBytes) * 100) : 0;
+  return { optimizedBytes, savedBytes, savedPercent };
+}
+
+function sumEstimates(
+  images: AnalyzedImage[],
+  key: keyof FormatEstimates,
+  totalBytes: number,
+): FormatEstimate {
+  const optimizedBytes = images.reduce(
+    (sum, item) => sum + item.estimates[key].optimizedBytes,
+    0,
+  );
+  const savedBytes = Math.max(0, totalBytes - optimizedBytes);
+  const savedPercent = totalBytes > 0 ? Math.round((savedBytes / totalBytes) * 100) : 0;
+  return { optimizedBytes, savedBytes, savedPercent };
+}
+
+function pickBestFormat(estimates: FormatEstimates): OutputFormat {
+  const ranked: OutputFormat[] = ['avif', 'webp', 'optimized'];
+  let best: OutputFormat = 'webp';
+  let bestSaved = -1;
+  for (const format of ranked) {
+    if (estimates[format].savedBytes > bestSaved) {
+      bestSaved = estimates[format].savedBytes;
+      best = format;
+    }
+  }
+  return best;
+}
 
 function isPrivateIp(ip: string): boolean {
   const version = isIP(ip);
@@ -109,6 +173,38 @@ async function assertPublicHostname(hostname: string): Promise<void> {
       throw new Error('Домен указывает на внутренний адрес — анализ недоступен.');
     }
   }
+}
+
+export type FetchedRemoteImage = {
+  buffer: Buffer;
+  contentType: string;
+  fileName: string;
+  finalUrl: string;
+};
+
+/** Fetch a single public image with SSRF guards — for tool handoff. */
+export async function fetchRemoteImage(rawUrl: string): Promise<FetchedRemoteImage> {
+  const target = await normalizePageUrl(rawUrl);
+  const fetched = await fetchWithLimits(target, {
+    timeoutMs: IMAGE_TIMEOUT_MS,
+    maxBytes: MAX_IMAGE_BYTES,
+    accept: 'image/*,*/*;q=0.8',
+  });
+
+  const contentType = guessMime(rawUrl, fetched.contentType);
+  if (!contentType.startsWith('image/')) {
+    throw new Error('По ссылке не изображение.');
+  }
+  if (contentType === 'image/svg+xml') {
+    throw new Error('SVG лучше открывать в инструменте вручную.');
+  }
+
+  return {
+    buffer: fetched.buffer,
+    contentType,
+    fileName: fileNameFromUrl(fetched.finalUrl || rawUrl),
+    finalUrl: fetched.finalUrl,
+  };
 }
 
 export async function normalizePageUrl(raw: string): Promise<URL> {
@@ -338,6 +434,7 @@ async function analyzeOneImage(imageUrl: string): Promise<AnalyzedImage> {
     optimizedBytes: 0,
     savedBytes: 0,
     savedPercent: 0,
+    estimates: emptyEstimates(),
     width: 0,
     height: 0,
     contentType: '',
@@ -367,24 +464,39 @@ async function analyzeOneImage(imageUrl: string): Promise<AnalyzedImage> {
       return base;
     }
 
-    const optimized = await optimizeImage(fetched.buffer, fetched.buffer.length, {
-      format: 'webp',
+    const variants = await optimizeAllFormats(fetched.buffer, fetched.buffer.length, {
       trim: false,
       quality: ESTIMATE_QUALITY,
     });
 
-    const optimizedBytes = Math.min(optimized.optimizedSize, fetched.buffer.length);
-    const savedBytes = Math.max(0, fetched.buffer.length - optimizedBytes);
-    const savedPercent =
-      fetched.buffer.length > 0
-        ? Math.round((savedBytes / fetched.buffer.length) * 100)
-        : 0;
+    const byFormat = Object.fromEntries(
+      variants.map((variant) => [variant.format, variant]),
+    ) as Partial<Record<OutputFormat, (typeof variants)[number]>>;
 
-    base.optimizedBytes = optimizedBytes;
-    base.savedBytes = savedBytes;
-    base.savedPercent = savedPercent;
-    base.width = optimized.originalWidth || optimized.width;
-    base.height = optimized.originalHeight || optimized.height;
+    const estimates: FormatEstimates = {
+      optimized: estimateFromSizes(
+        fetched.buffer.length,
+        byFormat.optimized?.optimizedSize ?? fetched.buffer.length,
+      ),
+      webp: estimateFromSizes(
+        fetched.buffer.length,
+        byFormat.webp?.optimizedSize ?? fetched.buffer.length,
+      ),
+      avif: estimateFromSizes(
+        fetched.buffer.length,
+        byFormat.avif?.optimizedSize ?? fetched.buffer.length,
+      ),
+    };
+
+    const primary = estimates.webp;
+    const meta = byFormat.webp ?? byFormat.optimized ?? variants[0];
+
+    base.estimates = estimates;
+    base.optimizedBytes = primary.optimizedBytes;
+    base.savedBytes = primary.savedBytes;
+    base.savedPercent = primary.savedPercent;
+    base.width = meta?.originalWidth || meta?.width || 0;
+    base.height = meta?.originalHeight || meta?.height || 0;
     base.thumbnailDataUrl = await makeThumbnail(fetched.buffer);
     return base;
   } catch (error) {
@@ -436,9 +548,13 @@ export async function analyzePage(rawUrl: string): Promise<AnalyzePageResult> {
   const successful = images.filter((item) => !item.error && item.originalBytes > 0);
 
   const totalBytes = successful.reduce((sum, item) => sum + item.originalBytes, 0);
-  const optimizedBytes = successful.reduce((sum, item) => sum + item.optimizedBytes, 0);
-  const savedBytes = Math.max(0, totalBytes - optimizedBytes);
-  const savedPercent = totalBytes > 0 ? Math.round((savedBytes / totalBytes) * 100) : 0;
+  const estimates: FormatEstimates = {
+    optimized: sumEstimates(successful, 'optimized', totalBytes),
+    webp: sumEstimates(successful, 'webp', totalBytes),
+    avif: sumEstimates(successful, 'avif', totalBytes),
+  };
+  const bestFormat = pickBestFormat(estimates);
+  const primary = estimates.webp;
 
   images.sort((a, b) => b.savedBytes - a.savedBytes || b.originalBytes - a.originalBytes);
 
@@ -450,9 +566,11 @@ export async function analyzePage(rawUrl: string): Promise<AnalyzePageResult> {
     skippedCount: images.length - successful.length,
     truncated,
     totalBytes,
-    optimizedBytes,
-    savedBytes,
-    savedPercent,
+    optimizedBytes: primary.optimizedBytes,
+    savedBytes: primary.savedBytes,
+    savedPercent: primary.savedPercent,
+    estimates,
+    bestFormat,
     images,
   };
 }

@@ -30,6 +30,19 @@
   line-height: 1.5;
 }
 
+.note {
+  margin: 0;
+  max-width: 56rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
 .form {
   display: flex;
   flex-direction: column;
@@ -285,6 +298,106 @@
   font-size: 0.75rem;
 }
 
+.formatSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.formatSectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.formatSectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.formatSectionHint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--muted-soft);
+}
+
+.formatGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.formatCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.formatCardBest {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.formatCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.formatCardTitle {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.bestBadge {
+  flex-shrink: 0;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.formatCardValue {
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.formatCardDiff {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.formatCardSave {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: var(--success);
+}
+
+.formatCardHint {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--muted-soft);
+}
+
 .zipBar {
   display: flex;
   align-items: center;
@@ -359,10 +472,10 @@
 
 .tableHead {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 120px 120px 120px 140px;
-  gap: 1.5rem;
+  grid-template-columns: 40px minmax(0, 1.2fr) 90px 110px 110px 110px 130px;
+  gap: 1rem;
   align-items: start;
-  padding: 0.75rem 1.5rem;
+  padding: 0.75rem 1.25rem;
   border-bottom: 1px solid var(--line);
   background: #f8fafc;
   color: var(--muted);
@@ -378,10 +491,10 @@
 
 .rowItem {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 120px 120px 120px 140px;
-  gap: 1.5rem;
+  grid-template-columns: 40px minmax(0, 1.2fr) 90px 110px 110px 110px 130px;
+  gap: 1rem;
   align-items: center;
-  padding: 0.75rem 1.5rem;
+  padding: 0.75rem 1.25rem;
   border-bottom: 1px solid var(--line);
 }
 
@@ -483,9 +596,21 @@
   font-weight: 500;
 }
 
+.metricStack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
 .savingCell {
   display: flex;
   align-items: center;
+}
+
+.mobileFormats {
+  display: none;
 }
 
 .savingPill {
@@ -517,11 +642,17 @@
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
+  cursor: pointer;
   transition: background 0.15s ease;
 }
 
-.optimizeLink:hover {
+.optimizeLink:hover:not(:disabled) {
   background: var(--accent-soft);
+}
+
+.optimizeLink:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .empty {
@@ -539,17 +670,23 @@
   display: block;
 }
 
+@media (max-width: 1100px) {
+  .tableHead,
+  .rowItem {
+    grid-template-columns: 40px minmax(0, 1fr) 80px 100px 100px 100px 110px;
+    gap: 0.75rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
 @media (max-width: 960px) {
   .submit {
     width: 180px;
   }
 
-  .tableHead,
-  .rowItem {
-    grid-template-columns: 40px minmax(0, 1fr) 100px 100px 90px 120px;
-    gap: 1rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
+  .formatGrid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -696,8 +833,16 @@
   }
 
   .metric,
+  .metricStack,
   .action {
     display: none;
+  }
+
+  .mobileFormats {
+    display: block;
+    width: 100%;
+    font-size: 0.6875rem;
+    color: var(--muted);
   }
 
   .savingCell {

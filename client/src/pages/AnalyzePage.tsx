@@ -3,14 +3,41 @@ import {
   ANALYZE_LIMITS,
   analyzePageUrl,
   downloadOptimizedZip,
+  fetchAnalyzeImage,
   type AnalyzePageResult,
   type AnalyzedImage,
+  type FormatEstimate,
+  type FormatEstimates,
 } from '../api/analyze';
 import { trackGoal, YM_GOALS } from '../analytics/ym';
 import { formatBytes } from '../utils/format';
+import { setHandoffFiles } from '../utils/imageHandoff';
 import styles from './AnalyzePage.module.css';
 
 type Status = 'idle' | 'loading' | 'done' | 'error';
+type EstimateKey = keyof FormatEstimates;
+
+const FORMAT_CARDS: {
+  key: EstimateKey;
+  title: string;
+  hint: string;
+}[] = [
+  {
+    key: 'optimized',
+    title: 'Исходный формат',
+    hint: 'Пережатие JPEG/PNG/WebP без смены формата',
+  },
+  {
+    key: 'webp',
+    title: 'WebP',
+    hint: 'Универсальный вариант для веба, q80',
+  },
+  {
+    key: 'avif',
+    title: 'AVIF',
+    hint: 'Обычно самый лёгкий, q80',
+  },
+];
 
 function hostLabel(url: string): string {
   try {
@@ -38,13 +65,34 @@ function pickZipCandidates(images: AnalyzedImage[]): AnalyzedImage[] {
     .slice(0, ANALYZE_LIMITS.maxZipImages);
 }
 
-export function AnalyzePage() {
+export function AnalyzePage({ onNavigate }: { onNavigate: (to: string) => void }) {
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzePageResult | null>(null);
   const [zipBusy, setZipBusy] = useState(false);
   const [zipMessage, setZipMessage] = useState<string | null>(null);
+  const [openingUrl, setOpeningUrl] = useState<string | null>(null);
+
+  const openInTool = async (image: AnalyzedImage) => {
+    if (openingUrl || image.error) return;
+    setOpeningUrl(image.url);
+    setZipMessage(null);
+    try {
+      const file = await fetchAnalyzeImage(image.url);
+      setHandoffFiles([file]);
+      trackGoal(YM_GOALS.analyzeOpenInTool, {
+        file_name: file.name.slice(0, 80),
+      });
+      onNavigate('/');
+    } catch (err) {
+      setZipMessage(
+        err instanceof Error ? err.message : 'Не удалось открыть изображение в инструменте.',
+      );
+    } finally {
+      setOpeningUrl(null);
+    }
+  };
 
   const zipCandidates = useMemo(
     () => (result ? pickZipCandidates(result.images) : []),
@@ -139,6 +187,14 @@ export function AnalyzePage() {
           Вставьте URL любой веб-страницы, и мы проанализируем все изображения на ней — покажем
           их размеры, форматы и сколько трафика можно сэкономить при оптимизации.
         </p>
+        <p className={styles.note} role="note">
+          Анализируется исходный HTML страницы без выполнения JavaScript. На SPA и сайтах с
+          клиентским рендером (React, Vue, Angular и т.п.) картинки могут не найтись или
+          результат будет неполным — мы работаем над этим.
+        </p>
+        <p className={styles.note} role="note">
+          Если сайт защищён от автоматических запросов, проанализировать его не получится.
+        </p>
       </header>
 
       <form className={styles.form} onSubmit={(event) => void onSubmit(event)}>
@@ -175,7 +231,7 @@ export function AnalyzePage() {
           <div>
             <p className={styles.loaderTitle}>Сканируем страницу</p>
             <p className={styles.loaderHint}>
-              Ищем изображения и оцениваем потенциал сжатия. Обычно это занимает несколько секунд.
+              Ищем изображения и считаем вес для исходного формата, WebP и AVIF.
             </p>
           </div>
         </div>
@@ -197,9 +253,21 @@ export function AnalyzePage() {
               <span className={styles.statLabel}>Найдено изображений</span>
               <strong className={styles.statValue}>{result.imageCount}</strong>
               <p className={styles.statHint}>
-                {result.analyzedCount > 0
-                  ? `оценено ${result.analyzedCount}`
-                  : 'на этой странице'}
+                {result.imageCount === 0 ? (
+                  'на этой странице'
+                ) : result.truncated ? (
+                  <>
+                    из‑за ограничений оценили только {ANALYZE_LIMITS.maxAnalyzeImages}
+                    <br />
+                    сразу оптимизируем {ANALYZE_LIMITS.maxZipImages}
+                  </>
+                ) : (
+                  <>
+                    оценили {result.analyzedCount}
+                    <br />
+                    сразу оптимизируем до {ANALYZE_LIMITS.maxZipImages}
+                  </>
+                )}
               </p>
             </article>
 
@@ -210,34 +278,61 @@ export function AnalyzePage() {
             </article>
 
             <article className={`${styles.stat} ${styles.statAccent}`}>
-              <span className={styles.statLabel}>Можно сэкономить</span>
+              <span className={styles.statLabel}>Лучший сценарий</span>
               <div className={styles.statValueRow}>
                 <strong className={styles.statValue}>
-                  −{formatBytes(result.savedBytes)}
+                  −{formatBytes(result.estimates[result.bestFormat].savedBytes)}
                 </strong>
-                <span className={styles.statPercent}>{result.savedPercent}%</span>
+                <span className={styles.statPercent}>
+                  {result.estimates[result.bestFormat].savedPercent}%
+                </span>
               </div>
               <p className={styles.statCompare}>
                 <span className={styles.statCompareFrom}>{formatBytes(result.totalBytes)}</span>
                 <span className={styles.statCompareArrow} aria-hidden>
                   →
                 </span>
-                <span className={styles.statCompareTo}>{formatBytes(result.optimizedBytes)}</span>
-                <span className={styles.statCompareNote}>после WebP</span>
+                <span className={styles.statCompareTo}>
+                  {formatBytes(result.estimates[result.bestFormat].optimizedBytes)}
+                </span>
+                <span className={styles.statCompareNote}>
+                  {result.bestFormat === 'optimized'
+                    ? 'исходный формат'
+                    : result.bestFormat.toUpperCase()}
+                </span>
               </p>
             </article>
           </div>
+
+          <section className={styles.formatSection} aria-label="Сценарии оптимизации">
+            <div className={styles.formatSectionHead}>
+              <h2 className={styles.formatSectionTitle}>Сколько станет в разных форматах</h2>
+              <p className={styles.formatSectionHint}>Оценка при quality 80, без ресайза</p>
+            </div>
+            <div className={styles.formatGrid}>
+              {FORMAT_CARDS.map((card) => (
+                <FormatCard
+                  key={card.key}
+                  title={card.title}
+                  hint={card.hint}
+                  totalBytes={result.totalBytes}
+                  estimate={result.estimates[card.key]}
+                  best={result.bestFormat === card.key}
+                />
+              ))}
+            </div>
+          </section>
 
           {zipCandidates.length > 0 ? (
             <div className={styles.zipBar}>
               <div className={styles.zipCopy}>
                 <p className={styles.zipTitle}>Скачать оптимизированные WebP</p>
                 <p className={styles.zipHint}>
-                  В архив попадёт до {ANALYZE_LIMITS.maxZipImages} картинок с наибольшей экономией
+                  Архив в WebP: до {ANALYZE_LIMITS.maxZipImages} картинок с наибольшей экономией
                   {result.analyzedCount > ANALYZE_LIMITS.maxZipImages
                     ? ` (из ${result.analyzedCount} оценённых)`
                     : ''}
-                  , суммарно не больше {formatBytes(ANALYZE_LIMITS.maxZipSourceBytes)} исходников.
+                  , не больше {formatBytes(ANALYZE_LIMITS.maxZipSourceBytes)} исходников.
                   Сейчас: {zipCandidates.length}.
                 </p>
               </div>
@@ -274,20 +369,31 @@ export function AnalyzePage() {
                 <div className={styles.tableHead} aria-hidden>
                   <span className={styles.colThumb} />
                   <span className={styles.colName}>Имя файла</span>
-                  <span className={styles.colSize}>Текущий размер</span>
-                  <span className={styles.colSize}>Оптимальный размер</span>
-                  <span className={styles.colSave}>Сжатие</span>
+                  <span className={styles.colSize}>Сейчас</span>
+                  <span className={styles.colSize}>Исходный</span>
+                  <span className={styles.colSize}>WebP</span>
+                  <span className={styles.colSize}>AVIF</span>
                   <span className={styles.colAction} />
                 </div>
                 <ul className={styles.list}>
                   {result.images.map((image) => (
-                    <ImageRow key={image.url} image={image} />
+                    <ImageRow
+                      key={image.url}
+                      image={image}
+                      busy={openingUrl === image.url}
+                      disabled={Boolean(openingUrl) || Boolean(image.error)}
+                      onOptimize={() => void openInTool(image)}
+                    />
                   ))}
                 </ul>
               </div>
             </>
           ) : (
-            <p className={styles.empty}>На странице не удалось найти изображения для анализа.</p>
+            <p className={styles.empty}>
+              На странице не удалось найти изображения для анализа. Если это SPA или сайт с
+              клиентским рендером, картинки появляются только после выполнения JavaScript — сейчас
+              мы их не видим. Мы работаем над этим.
+            </p>
           )}
         </div>
       ) : null}
@@ -295,8 +401,70 @@ export function AnalyzePage() {
   );
 }
 
-function ImageRow({ image }: { image: AnalyzedImage }) {
+function FormatCard({
+  title,
+  hint,
+  totalBytes,
+  estimate,
+  best,
+}: {
+  title: string;
+  hint: string;
+  totalBytes: number;
+  estimate: FormatEstimate;
+  best: boolean;
+}) {
+  return (
+    <article className={`${styles.formatCard} ${best ? styles.formatCardBest : ''}`}>
+      <div className={styles.formatCardTop}>
+        <span className={styles.formatCardTitle}>{title}</span>
+        {best ? <span className={styles.bestBadge}>лучше</span> : null}
+      </div>
+      <strong className={styles.formatCardValue}>{formatBytes(estimate.optimizedBytes)}</strong>
+      <p className={styles.formatCardDiff}>
+        {totalBytes > 0 ? (
+          <>
+            {formatBytes(totalBytes)} → {formatBytes(estimate.optimizedBytes)}
+          </>
+        ) : (
+          '—'
+        )}
+      </p>
+      <p className={styles.formatCardSave}>
+        {estimate.savedBytes > 0
+          ? `−${formatBytes(estimate.savedBytes)} (${estimate.savedPercent}%)`
+          : 'без выигрыша'}
+      </p>
+      <p className={styles.formatCardHint}>{hint}</p>
+    </article>
+  );
+}
+
+function estimateCell(estimate?: FormatEstimate) {
+  if (!estimate || estimate.optimizedBytes <= 0) {
+    return { size: '—', save: null as string | null };
+  }
+  return {
+    size: formatBytes(estimate.optimizedBytes),
+    save: estimate.savedPercent > 0 ? `−${estimate.savedPercent}%` : '0%',
+  };
+}
+
+function ImageRow({
+  image,
+  busy,
+  disabled,
+  onOptimize,
+}: {
+  image: AnalyzedImage;
+  busy: boolean;
+  disabled: boolean;
+  onOptimize: () => void;
+}) {
   const format = formatLabel(image.contentType, image.fileName);
+  const same = estimateCell(image.estimates?.optimized);
+  const webp = estimateCell(image.estimates?.webp);
+  const avif = estimateCell(image.estimates?.avif);
 
   return (
     <li className={styles.rowItem}>
@@ -327,8 +495,9 @@ function ImageRow({ image }: { image: AnalyzedImage }) {
           <span className={styles.mobileArrow} aria-hidden>
             →
           </span>
-          <span className={styles.mobileOpt}>
-            {image.optimizedBytes > 0 ? formatBytes(image.optimizedBytes) : '—'}
+          <span className={styles.mobileOpt}>{webp.size}</span>
+          <span className={styles.mobileFormats}>
+            исх. {same.save ?? '—'} · WebP {webp.save ?? '—'} · AVIF {avif.save ?? '—'}
           </span>
         </div>
       </div>
@@ -336,20 +505,28 @@ function ImageRow({ image }: { image: AnalyzedImage }) {
       <div className={`${styles.metric} ${styles.metricMuted}`}>
         {image.originalBytes > 0 ? formatBytes(image.originalBytes) : '—'}
       </div>
-      <div className={`${styles.metric} ${styles.metricStrong}`}>
-        {image.optimizedBytes > 0 ? formatBytes(image.optimizedBytes) : '—'}
+      <div className={styles.metricStack}>
+        <span className={styles.metricStrong}>{same.size}</span>
+        {same.save ? <span className={styles.savingPill}>{same.save}</span> : null}
       </div>
-      <div className={styles.savingCell}>
-        {image.savedPercent > 0 ? (
-          <span className={styles.savingPill}>−{image.savedPercent}%</span>
-        ) : (
-          <span className={styles.metric}>—</span>
-        )}
+      <div className={styles.metricStack}>
+        <span className={styles.metricStrong}>{webp.size}</span>
+        {webp.save ? <span className={styles.savingPill}>{webp.save}</span> : null}
+      </div>
+      <div className={styles.metricStack}>
+        <span className={styles.metricStrong}>{avif.size}</span>
+        {avif.save ? <span className={styles.savingPill}>{avif.save}</span> : null}
       </div>
       <div className={styles.action}>
-        <a className={styles.optimizeLink} href="/" title="Открыть инструмент">
-          Оптимизировать
-        </a>
+        <button
+          type="button"
+          className={styles.optimizeLink}
+          onClick={onOptimize}
+          disabled={disabled}
+          title="Открыть в инструменте с этой картинкой"
+        >
+          {busy ? 'Загрузка…' : 'Оптимизировать'}
+        </button>
       </div>
     </li>
   );

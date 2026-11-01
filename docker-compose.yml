@@ -19,7 +19,7 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
-      BUG_REPORT_TO: ${BUG_REPORT_TO:-maaaslanov@gmail.com}
+      BUG_REPORT_TO: ${BUG_REPORT_TO:-}
     restart: unless-stopped
     healthcheck:
       test:
