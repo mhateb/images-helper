@@ -1,0 +1,66 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { takeRateLimitToken } from '../src/rateLimit.js';
+
+describe('takeRateLimitToken', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('пропускает запросы в пределах лимита и останавливает следующий', () => {
+    const key = `limit-${crypto.randomUUID()}`;
+
+    expect(takeRateLimitToken(key, 2, 60_000)).toEqual({ ok: true });
+    expect(takeRateLimitToken(key, 2, 60_000)).toEqual({ ok: true });
+    expect(takeRateLimitToken(key, 2, 60_000)).toEqual({
+      ok: false,
+      retryAfterSec: 60,
+    });
+  });
+
+  it('считает лимит отдельно для каждого ключа', () => {
+    const first = `a-${crypto.randomUUID()}`;
+    const second = `b-${crypto.randomUUID()}`;
+
+    expect(takeRateLimitToken(first, 1, 60_000).ok).toBe(true);
+    expect(takeRateLimitToken(first, 1, 60_000).ok).toBe(false);
+    expect(takeRateLimitToken(second, 1, 60_000)).toEqual({ ok: true });
+  });
+
+  it('возвращает остаток окна и снова пускает запрос, когда окно прошло', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(0);
+    const key = `window-${crypto.randomUUID()}`;
+
+    expect(takeRateLimitToken(key, 1, 10_000)).toEqual({ ok: true });
+
+    vi.setSystemTime(2_500);
+    expect(takeRateLimitToken(key, 1, 10_000)).toEqual({
+      ok: false,
+      retryAfterSec: 8,
+    });
+
+    vi.setSystemTime(9_999);
+    expect(takeRateLimitToken(key, 1, 10_000)).toEqual({
+      ok: false,
+      retryAfterSec: 1,
+    });
+
+    vi.setSystemTime(10_000);
+    expect(takeRateLimitToken(key, 1, 10_000)).toEqual({ ok: true });
+  });
+
+  it('забывает события, которые вышли из окна, и держит лимит по оставшимся', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(0);
+    const key = `slide-${crypto.randomUUID()}`;
+
+    expect(takeRateLimitToken(key, 2, 1_000).ok).toBe(true);
+    vi.setSystemTime(900);
+    expect(takeRateLimitToken(key, 2, 1_000).ok).toBe(true);
+    expect(takeRateLimitToken(key, 2, 1_000).ok).toBe(false);
+
+    vi.setSystemTime(1_001);
+    expect(takeRateLimitToken(key, 2, 1_000).ok).toBe(true);
+    expect(takeRateLimitToken(key, 2, 1_000).ok).toBe(false);
+  });
+});

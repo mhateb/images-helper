@@ -6,3 +6,6 @@ dist
 .env.*
 uploads
 *.log
+playwright-report/
+test-results/
+blob-report/

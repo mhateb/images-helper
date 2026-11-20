@@ -115,7 +115,7 @@ function pickBestFormat(estimates: FormatEstimates): OutputFormat {
   return best;
 }
 
-function isPrivateIp(ip: string): boolean {
+export function isPrivateIp(ip: string): boolean {
   const version = isIP(ip);
   if (version === 4) {
     const parts = ip.split('.').map(Number);
@@ -136,7 +136,7 @@ function isPrivateIp(ip: string): boolean {
     if (normalized.startsWith('fe80')) return true; // link-local
     if (normalized.startsWith('ff')) return true; // multicast
     // IPv4-mapped :ffff:x.x.x.x
-    const mapped = normalized.match(/^:ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+    const mapped = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
     if (mapped) return isPrivateIp(mapped[1]);
     return false;
   }

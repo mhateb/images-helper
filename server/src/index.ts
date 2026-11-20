@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import cors from '@fastify/cors';
@@ -284,7 +284,7 @@ function parseQuality(value: unknown): number {
   return 80;
 }
 
-function parseCrop(fields: Record<string, string>): CropRect | undefined {
+export function parseCrop(fields: Record<string, string>): CropRect | undefined {
   const x = Number(fields.cropX);
   const y = Number(fields.cropY);
   const width = Number(fields.cropWidth);
@@ -459,9 +459,19 @@ function sanitizeBaseName(value: unknown, fallback: string): string {
   return cleaned || 'image';
 }
 
-async function main() {
+function isDirectRun(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(entry);
+  } catch {
+    return false;
+  }
+}
+
+export async function buildApp(options?: { logger?: boolean }) {
   const app = Fastify({
-    logger: true,
+    logger: options?.logger ?? true,
     bodyLimit: MAX_FILE_SIZE * 3,
   });
 
@@ -897,11 +907,18 @@ async function main() {
     app.log.info(`Serving static UI from ${staticDir}`);
   }
 
+  return app;
+}
+
+async function main() {
+  const app = await buildApp();
   await app.listen({ port: PORT, host: HOST });
   app.log.info(`Images Helper on http://localhost:${PORT}`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (isDirectRun()) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

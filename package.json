@@ -9,9 +9,12 @@
   "scripts": {
     "dev": "concurrently -n server,client -c olive,cyan \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w server && npm run build -w client",
-    "start": "npm run start -w server"
+    "start": "npm run start -w server",
+    "test": "npm run test -w server",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "concurrently": "^9.1.2"
   }
 }
