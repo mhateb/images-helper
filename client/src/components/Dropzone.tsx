@@ -1,8 +1,9 @@
 import { useCallback, useRef, useState, type DragEvent } from 'react';
+import { MAX_FILE_BYTES, MAX_FILE_MB, MAX_FILES } from 'shared';
 import styles from './Dropzone.module.css';
 
-const MAX_BYTES = 30 * 1024 * 1024;
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif,image/gif';
+const DEFAULT_HINT = `До ${MAX_FILES} файлов за раз. PNG, JPEG, WEBP, AVIF, GIF до ${MAX_FILE_MB} МБ каждый`;
 
 export type UploadSource = 'drop' | 'picker' | 'analyze';
 
@@ -22,7 +23,7 @@ export function Dropzone({
   onFiles,
   multiple = true,
   title = 'Перетащите изображения сюда или нажмите для загрузки',
-  hint = 'До 20 файлов за раз. PNG, JPEG, WEBP, AVIF, GIF до 30 МБ каждый',
+  hint = DEFAULT_HINT,
   compact = false,
 }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -43,7 +44,7 @@ export function Dropzone({
           rejectedType += 1;
           continue;
         }
-        if (file.size > MAX_BYTES) {
+        if (file.size > MAX_FILE_BYTES) {
           rejectedSize += 1;
           continue;
         }
@@ -52,7 +53,7 @@ export function Dropzone({
 
       if (accepted.length === 0) {
         if (rejectedSize > 0) {
-          setError('Файлы больше 30 МБ. Выберите изображения поменьше.');
+          setError(`Файлы больше ${MAX_FILE_MB} МБ. Выберите изображения поменьше.`);
         } else {
           setError('Нужны файлы изображений (JPEG, PNG, WebP, AVIF, GIF).');
         }
@@ -62,7 +63,7 @@ export function Dropzone({
       if (rejectedType > 0 || rejectedSize > 0) {
         const parts: string[] = [];
         if (rejectedType > 0) parts.push(`${rejectedType} не изображение`);
-        if (rejectedSize > 0) parts.push(`${rejectedSize} больше 30 МБ`);
+        if (rejectedSize > 0) parts.push(`${rejectedSize} больше ${MAX_FILE_MB} МБ`);
         setError(`Пропущено: ${parts.join(', ')}. Остальные загружены.`);
       } else {
         setError(null);

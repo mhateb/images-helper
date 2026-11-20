@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { takeRateLimitToken } from '../src/rateLimit.js';
+import {
+  hasRateLimitBucket,
+  startRateLimitCleanup,
+  stopRateLimitCleanup,
+  sweepExpiredRateLimits,
+  takeRateLimitToken,
+} from '../src/rateLimit.js';
 
 describe('takeRateLimitToken', () => {
   afterEach(() => {
@@ -62,5 +68,42 @@ describe('takeRateLimitToken', () => {
     vi.setSystemTime(1_001);
     expect(takeRateLimitToken(key, 2, 1_000).ok).toBe(true);
     expect(takeRateLimitToken(key, 2, 1_000).ok).toBe(false);
+  });
+
+  it('очистка удаляет ключи с истёкшим окном и оставляет живые', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(0);
+    const stale = Array.from({ length: 20 }, () => `stale-${crypto.randomUUID()}`);
+    for (const key of stale) {
+      expect(takeRateLimitToken(key, 1, 5_000).ok).toBe(true);
+      expect(takeRateLimitToken(key, 1, 5_000).ok).toBe(false);
+    }
+
+    vi.setSystemTime(5_000);
+    const live = `live-${crypto.randomUUID()}`;
+    expect(takeRateLimitToken(live, 1, 5_000).ok).toBe(true);
+
+    sweepExpiredRateLimits();
+
+    for (const key of stale) expect(hasRateLimitBucket(key)).toBe(false);
+    expect(hasRateLimitBucket(live)).toBe(true);
+    expect(takeRateLimitToken(stale[0], 1, 5_000)).toEqual({ ok: true });
+    expect(takeRateLimitToken(live, 1, 5_000).ok).toBe(false);
+  });
+
+  it('по таймеру удаляет ключи, окно которых истекло', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const key = `timer-${crypto.randomUUID()}`;
+    expect(takeRateLimitToken(key, 1, 1_000).ok).toBe(true);
+
+    startRateLimitCleanup(500);
+    try {
+      vi.setSystemTime(1_000);
+      vi.advanceTimersByTime(500);
+      expect(hasRateLimitBucket(key)).toBe(false);
+    } finally {
+      stopRateLimitCleanup();
+    }
   });
 });

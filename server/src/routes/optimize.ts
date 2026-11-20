@@ -1,16 +1,23 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import JSZip from 'jszip';
 import {
+  ART_CROP_PREFIX,
+  ART_TOKEN_BY_FILE_FIELD,
+  BP_ORDER,
+  buildArtDirectionPicture,
+  type BreakpointToken,
+} from 'shared';
+import { OPTIMIZE_RATE_LIMIT, OPTIMIZE_RATE_WINDOW_MS } from '../config.js';
+import {
   isAllowedMime,
   optimizeAllFormats,
   optimizeArtDirection,
   optimizeImage,
-  type BreakpointToken,
   type CropRect,
   type OutputFormat,
   type PrepareOptions,
 } from '../optimize.js';
-import { buildArtDirectionPicture } from '../pictureMarkup.js';
+import { takeRateLimitToken } from '../rateLimit.js';
 
 type UploadOk = {
   buffer: Buffer;
@@ -25,12 +32,6 @@ type UploadErr = {
 type ArtUploadOk = {
   files: Partial<Record<BreakpointToken, { buffer: Buffer; filename: string }>>;
   fields: Record<string, string>;
-};
-
-const ART_FILE_FIELDS: Record<string, BreakpointToken> = {
-  imageMd: 'md',
-  imageLg: 'lg',
-  imageXl: 'xl',
 };
 
 function parseFormat(value: unknown): OutputFormat {
@@ -138,7 +139,7 @@ async function readOptimizeUpload(request: FastifyRequest): Promise<UploadOk | U
       }
     }
   } catch (error) {
-    request.log.error(error);
+    request.log.warn({ err: error }, 'multipart parse failed');
     return { error: { code: 400, message: 'Некорректный multipart-запрос.' } };
   }
 
@@ -176,7 +177,7 @@ async function readArtDirectionUpload(
   try {
     for await (const part of request.parts()) {
       if (part.type === 'file') {
-        const token = ART_FILE_FIELDS[part.fieldname];
+        const token = ART_TOKEN_BY_FILE_FIELD[part.fieldname];
         if (!token) {
           await part.toBuffer();
           continue;
@@ -201,7 +202,7 @@ async function readArtDirectionUpload(
       }
     }
   } catch (error) {
-    request.log.error(error);
+    request.log.warn({ err: error }, 'multipart parse failed');
     return { error: { code: 400, message: 'Некорректный multipart-запрос.' } };
   }
 
@@ -220,6 +221,20 @@ async function readArtDirectionUpload(
 
 export function registerOptimizeRoutes(app: FastifyInstance): void {
   app.post('/api/optimize', async (request, reply) => {
+    const rate = takeRateLimitToken(
+      `optimize:${request.ip}`,
+      OPTIMIZE_RATE_LIMIT,
+      OPTIMIZE_RATE_WINDOW_MS,
+    );
+    if (!rate.ok) {
+      return reply
+        .code(429)
+        .header('Retry-After', String(rate.retryAfterSec))
+        .send({
+          error: `Слишком много оптимизаций. Подождите ~${rate.retryAfterSec} сек.`,
+        });
+    }
+
     const upload = await readOptimizeUpload(request);
     if ('error' in upload) {
       return reply.code(upload.error.code).send({ error: upload.error.message });
@@ -251,7 +266,7 @@ export function registerOptimizeRoutes(app: FastifyInstance): void {
 
       return reply.send(result.buffer);
     } catch (error) {
-      request.log.error(error);
+      request.log.warn({ err: error }, 'image optimize failed');
       return reply.code(422).send({
         error: 'Не удалось обработать изображение. Проверьте файл и параметры обрезки.',
       });
@@ -297,7 +312,7 @@ export function registerOptimizeRoutes(app: FastifyInstance): void {
 
       return reply.send(zipBuffer);
     } catch (error) {
-      request.log.error(error);
+      request.log.warn({ err: error }, 'image optimize failed');
       return reply.code(422).send({
         error: 'Не удалось обработать изображение. Проверьте файл и параметры обрезки.',
       });
@@ -315,13 +330,13 @@ export function registerOptimizeRoutes(app: FastifyInstance): void {
     const baseName = sanitizeBaseName(fields.baseName, xlName);
 
     const slots: { token: BreakpointToken; buffer: Buffer; crop?: CropRect }[] = [];
-    for (const token of ['md', 'lg', 'xl'] as BreakpointToken[]) {
+    for (const token of BP_ORDER) {
       const file = files[token];
       if (!file) continue;
       slots.push({
         token,
         buffer: file.buffer,
-        crop: parseCropPrefixed(fields, `crop${token[0].toUpperCase()}${token.slice(1)}`),
+        crop: parseCropPrefixed(fields, ART_CROP_PREFIX[token]),
       });
     }
 
@@ -370,7 +385,7 @@ export function registerOptimizeRoutes(app: FastifyInstance): void {
 
       return reply.send(zipBuffer);
     } catch (error) {
-      request.log.error(error);
+      request.log.warn({ err: error }, 'image optimize failed');
       return reply.code(422).send({
         error: 'Не удалось обработать изображение. Проверьте файл и параметры обрезки.',
       });

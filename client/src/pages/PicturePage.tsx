@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { downloadBlob, generateArtDirection } from '../api/optimize';
-import { Cropper } from '../components/Cropper';
 import {
   BP,
   BP_ORDER,
-  slotLabel,
-  type BreakpointToken,
-} from '../constants/breakpoints';
-import type { ArtDirectionResult, CropArea } from '../types';
-import { formatBytes } from '../utils/format';
-import {
+  MAX_FILE_BYTES,
+  MAX_FILE_MB,
   buildArtDirectionPicture,
   expectedArtFilenames,
-} from '../utils/pictureMarkup';
+  slotLabel,
+  type BreakpointToken,
+} from 'shared';
+import { downloadBlob, generateArtDirection } from '../api/optimize';
+import { Cropper } from '../components/Cropper';
+import type { ArtDirectionResult, CropArea } from '../types';
+import { formatBytes } from '../utils/format';
 import appStyles from '../App.module.css';
 import styles from './PicturePage.module.css';
 
@@ -33,7 +33,7 @@ function baseNameFromFile(file: File): string {
 }
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif,image/gif';
-const MAX_BYTES = 30 * 1024 * 1024;
+const DEFAULT_PREVIEW_TOKENS: BreakpointToken[] = ['xl'];
 
 export function PicturePage() {
   const [slots, setSlots] = useState<Partial<Record<BreakpointToken, SlotState>>>({});
@@ -75,11 +75,11 @@ export function PicturePage() {
     return slots.xl?.file ? baseNameFromFile(slots.xl.file) : 'image';
   }, [baseName, slots.xl?.file]);
 
-  const previewTokens = result?.tokens?.length
-    ? result.tokens
-    : filledTokens.length > 0
-      ? filledTokens
-      : (['xl'] as BreakpointToken[]);
+  const previewTokens = useMemo(() => {
+    if (result?.tokens?.length) return result.tokens;
+    if (filledTokens.length > 0) return filledTokens;
+    return DEFAULT_PREVIEW_TOKENS;
+  }, [result, filledTokens]);
 
   const pictureCode = useMemo(
     () =>
@@ -133,8 +133,8 @@ export function PicturePage() {
       setError('Нужен файл изображения (JPEG, PNG, WebP, AVIF, GIF).');
       return;
     }
-    if (file.size > MAX_BYTES) {
-      setError('Файл больше 30 МБ.');
+    if (file.size > MAX_FILE_BYTES) {
+      setError(`Файл больше ${MAX_FILE_MB} МБ.`);
       return;
     }
     setSlotFile(token, file);

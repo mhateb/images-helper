@@ -4,7 +4,9 @@
 
 Базовый URL в разработке — `http://localhost:3001`. Vite проксирует `/api` с `http://localhost:5173`.
 
-`GET /api/health` → `{ "ok": true }`.
+`GET /api/health` → `{ "ok": true, "version": "1.0.0", "uptime": 3600 }`.
+
+`version` — поле `version` из `server/package.json`. `uptime` — целые секунды с запуска процесса. Ответ без кэша на стороне приложения: монитор видит текущий процесс.
 
 ## Оптимизация
 
@@ -21,7 +23,7 @@
 
 Ответ — файл и заголовки `X-Original-Size`, `X-Optimized-Size`, `X-Width`, `X-Height`, `X-Original-Width`, `X-Original-Height`, `X-Extension`.
 
-Лимит файла — 30 МБ. Типы: JPEG, PNG, WebP, AVIF, GIF.
+Лимит файла — 30 МБ. Типы: JPEG, PNG, WebP, AVIF, GIF. С одного IP — 180 запросов за 10 минут, иначе `429` и `Retry-After`.
 
 `POST /api/optimize-all` — те же поля без одного `format`. В ответе ZIP со всеми вариантами.
 
@@ -39,6 +41,6 @@
 
 ## Багрепорт
 
-`POST /api/bug-report` — multipart: `description`, опционально `contactEmail`, `pageUrl`, `userAgent`, файл `screenshot` (JPEG, PNG, WebP, GIF, до 5 МБ).
+`POST /api/bug-report` — multipart: `description`, опционально `contactEmail`, `pageUrl`, `userAgent`, файл `screenshot` (JPEG, PNG, WebP, GIF, до 5 МБ). С одного IP — 5 сообщений за 10 минут, иначе `429` и `Retry-After`.
 
 Если SMTP не настроен, ответ `503`. Переменные — в [деплое](deploy.md).

@@ -1,147 +1,18 @@
-export const SITE_URL = (process.env.PUBLIC_SITE_URL ?? 'https://fitpix.ru').replace(
-  /\/+$/,
-  '',
-);
-export const SITE_NAME = 'Fitpix.ru';
-export const SITE_LOCALE = 'ru_RU';
-export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.jpg`;
+import {
+  SITE_NAME,
+  SPA_PATHS,
+  absoluteUrl,
+  getSeoRoute,
+  jsonLdForPath,
+  normalizePath,
+  normalizeSiteUrl,
+  ogImageUrl,
+} from 'shared';
 
-type SeoRoute = {
-  path: string;
-  title: string;
-  description: string;
-  ogType: 'website' | 'article';
-  shellHeading: string;
-  shellLead: string;
-};
+export const SITE_URL = normalizeSiteUrl(process.env.PUBLIC_SITE_URL);
+export const DEFAULT_OG_IMAGE = ogImageUrl(SITE_URL);
 
-const SEO_ROUTES: Record<string, SeoRoute> = {
-  '/': {
-    path: '/',
-    title: 'Fitpix.ru — онлайн-оптимизация картинок: WebP, AVIF, обрезка и сжатие',
-    description:
-      'Бесплатный инструмент для оптимизации изображений: сжатие JPEG/PNG, конвертация в WebP и AVIF, ручная обрезка и автообрезка краёв. До 20 файлов за раз, без регистрации.',
-    ogType: 'website',
-    shellHeading: 'Онлайн-оптимизация картинок для веба',
-    shellLead:
-      'Сжимайте JPEG и PNG, конвертируйте в WebP и AVIF, обрезайте и убирайте лишние поля — бесплатно и без регистрации.',
-  },
-  '/guide': {
-    path: '/guide',
-    title: 'Гайд по оптимизации картинок и тегу picture — Fitpix.ru',
-    description:
-      'Практический гайд: форматы WebP/AVIF, брейкпоинты, source/media/srcset и подготовка ассетов под <picture> для быстрой вёрстки.',
-    ogType: 'article',
-    shellHeading: 'Гайд по оптимизации картинок для веба',
-    shellLead:
-      'Форматы, брейкпоинты и тег picture: как готовить ассеты под реальные слоты в вёрстке.',
-  },
-  '/analyze': {
-    path: '/analyze',
-    title: 'Анализ изображений сайта — Fitpix.ru',
-    description:
-      'Вставьте URL страницы: Fitpix найдёт картинки, оценит их вес и покажет, сколько можно сэкономить за счёт оптимизации WebP.',
-    ogType: 'website',
-    shellHeading: 'Анализ изображений сайта',
-    shellLead:
-      'Проверьте страницу по URL: сколько на ней картинок и какой запас по весу даст оптимизация.',
-  },
-  '/privacy': {
-    path: '/privacy',
-    title: 'Политика конфиденциальности — Fitpix.ru',
-    description:
-      'Как Fitpix.ru обрабатывает изображения, cookies Яндекс.Метрики и сообщения о проблемах.',
-    ogType: 'website',
-    shellHeading: 'Политика конфиденциальности',
-    shellLead:
-      'Как Fitpix обрабатывает изображения, cookies аналитики и сообщения о проблемах.',
-  },
-};
-
-export const SPA_PATHS = new Set(Object.keys(SEO_ROUTES));
-
-export function normalizePath(pathname: string): string {
-  const bare = pathname.split('?')[0]?.split('#')[0] ?? '/';
-  return bare.replace(/\/+$/, '') || '/';
-}
-
-function absoluteUrl(path: string): string {
-  return path === '/' ? `${SITE_URL}/` : `${SITE_URL}${path}`;
-}
-
-function jsonLdFor(route: SeoRoute): Record<string, unknown> {
-  if (route.path === '/guide') {
-    return {
-      '@context': 'https://schema.org',
-      '@type': 'TechArticle',
-      headline: route.shellHeading,
-      name: route.title,
-      description: route.description,
-      inLanguage: 'ru',
-      isPartOf: {
-        '@type': 'WebSite',
-        name: SITE_NAME,
-        url: SITE_URL,
-      },
-      mainEntityOfPage: absoluteUrl('/guide'),
-    };
-  }
-
-  if (route.path === '/privacy') {
-    return {
-      '@context': 'https://schema.org',
-      '@type': 'WebPage',
-      name: route.title,
-      description: route.description,
-      inLanguage: 'ru',
-      isPartOf: {
-        '@type': 'WebSite',
-        name: SITE_NAME,
-        url: SITE_URL,
-      },
-      mainEntityOfPage: absoluteUrl('/privacy'),
-    };
-  }
-
-  if (route.path === '/analyze') {
-    return {
-      '@context': 'https://schema.org',
-      '@type': 'WebApplication',
-      name: route.shellHeading,
-      url: absoluteUrl('/analyze'),
-      applicationCategory: 'MultimediaApplication',
-      operatingSystem: 'Any',
-      inLanguage: 'ru',
-      description: route.description,
-      isPartOf: {
-        '@type': 'WebSite',
-        name: SITE_NAME,
-        url: SITE_URL,
-      },
-      offers: {
-        '@type': 'Offer',
-        price: '0',
-        priceCurrency: 'RUB',
-      },
-    };
-  }
-
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'WebApplication',
-    name: SITE_NAME,
-    url: SITE_URL,
-    applicationCategory: 'MultimediaApplication',
-    operatingSystem: 'Any',
-    inLanguage: 'ru',
-    description: route.description,
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'RUB',
-    },
-  };
-}
+export { SPA_PATHS, normalizePath };
 
 function replaceMetaContent(html: string, attr: 'name' | 'property', key: string, content: string) {
   const re = new RegExp(
@@ -184,7 +55,7 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
-/** Yandex Metrika counter from runtime env (Amvera "Запуск" vars). */
+/** Yandex Metrika counter from runtime env. */
 export function resolveYmCounterId(): number {
   const raw = process.env.VITE_YM_ID || process.env.YM_ID || '';
   const id = Number(raw);
@@ -210,11 +81,19 @@ function injectYmRuntimeConfig(html: string): string {
   return html.replace('</head>', `    ${script}\n  </head>`);
 }
 
-export function applySeoToHtml(html: string, pathname: string): string {
-  const path = normalizePath(pathname);
-  const route = SEO_ROUTES[path] ?? SEO_ROUTES['/'];
-  const url = absoluteUrl(route.path);
-  const jsonLd = JSON.stringify(jsonLdFor(route));
+/** Подписывает inline- и модульные скрипты документа nonce из CSP. */
+export function applyScriptNonce(html: string, nonce: string): string {
+  if (!/^[a-f0-9]{32}$/.test(nonce)) return html;
+  return html.replace(/<script\b([^>]*)>/gi, (_match, attrs: string) => {
+    if (/(?:^|\s)nonce\s*=/i.test(attrs)) return _match;
+    return `<script nonce="${nonce}"${attrs}>`;
+  });
+}
+
+export function applySeoToHtml(html: string, pathname: string, scriptNonce = ''): string {
+  const route = getSeoRoute(pathname);
+  const url = absoluteUrl(SITE_URL, route.path);
+  const jsonLd = JSON.stringify(jsonLdForPath(SITE_URL, pathname));
 
   let next = html;
   next = next.replace(/<title>[^<]*<\/title>/i, `<title>${escapeHtml(route.title)}</title>`);
@@ -243,6 +122,7 @@ export function applySeoToHtml(html: string, pathname: string): string {
   }
 
   next = injectYmRuntimeConfig(next);
+  next = applyScriptNonce(next, scriptNonce);
 
   const shell = [
     '<div data-seo-shell>',

@@ -1,3 +1,9 @@
+import {
+  ART_CROP_PREFIX,
+  ART_FILE_FIELD,
+  BP_ORDER,
+  isBreakpointToken,
+} from 'shared';
 import type {
   ArtDirectionParams,
   ArtDirectionResult,
@@ -120,18 +126,6 @@ function sanitizeBaseName(fallbackFile: File | undefined, override?: string): st
   return cleaned || 'image';
 }
 
-const FILE_FIELD: Record<BreakpointToken, string> = {
-  md: 'imageMd',
-  lg: 'imageLg',
-  xl: 'imageXl',
-};
-
-const CROP_PREFIX: Record<BreakpointToken, string> = {
-  md: 'cropMd',
-  lg: 'cropLg',
-  xl: 'cropXl',
-};
-
 export async function generateArtDirection(
   params: ArtDirectionParams,
 ): Promise<ArtDirectionResult> {
@@ -145,11 +139,11 @@ export async function generateArtDirection(
   form.append('quality', String(params.quality));
   form.append('baseName', baseName);
 
-  for (const token of ['md', 'lg', 'xl'] as BreakpointToken[]) {
+  for (const token of BP_ORDER) {
     const slot = params.slots[token];
     if (!slot) continue;
-    form.append(FILE_FIELD[token], slot.file);
-    appendCropFields(form, slot.crop, CROP_PREFIX[token]);
+    form.append(ART_FILE_FIELD[token], slot.file);
+    appendCropFields(form, slot.crop, ART_CROP_PREFIX[token]);
   }
 
   const response = await fetch('/api/optimize-responsive', {
@@ -165,7 +159,7 @@ export async function generateArtDirection(
   const tokens = (response.headers.get('X-Tokens') ?? 'xl')
     .split(',')
     .map((part) => part.trim())
-    .filter((part): part is BreakpointToken => part === 'md' || part === 'lg' || part === 'xl');
+    .filter((part): part is BreakpointToken => isBreakpointToken(part));
   const has2xTokens = new Set(
     (response.headers.get('X-Has-2x') ?? '')
       .split(',')

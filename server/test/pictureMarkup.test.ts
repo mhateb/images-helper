@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildArtDirectionPicture, mediaForTokens } from '../src/pictureMarkup.js';
+import { buildArtDirectionPicture, mediaForTokens } from 'shared';
 
 describe('pictureMarkup', () => {
   it('ставит media от узкого брейкпоинта к широкому и оставляет fallback без media', () => {

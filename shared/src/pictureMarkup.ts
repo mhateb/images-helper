@@ -1,30 +1,4 @@
-import { BP } from './optimize.js';
-import type { BreakpointToken } from './optimize.js';
-
-/** Media queries for filled breakpoints, narrow → wide. Last has no media (fallback). */
-export function mediaForTokens(
-  tokens: BreakpointToken[],
-): { token: BreakpointToken; media?: string }[] {
-  const order: BreakpointToken[] = ['md', 'lg', 'xl'];
-  const present = order.filter((token) => tokens.includes(token));
-
-  return present.map((token, index) => {
-    const isLast = index === present.length - 1;
-    if (isLast) return { token };
-
-    const next = present[index + 1];
-    const nextBp = BP[next];
-
-    if (index === 0) {
-      return { token, media: `(max-width: ${nextBp - 1}px)` };
-    }
-
-    return {
-      token,
-      media: `(min-width: ${BP[token]}px) and (max-width: ${nextBp - 1}px)`,
-    };
-  });
-}
+import { BP, mediaForTokens, type BreakpointToken } from './breakpoints.js';
 
 function densitySrcset(
   baseName: string,
@@ -41,14 +15,15 @@ function densitySrcset(
 export function buildArtDirectionPicture(options: {
   baseName: string;
   tokens: BreakpointToken[];
-  /** Which tokens have a distinct 2x file */
-  has2x: Partial<Record<BreakpointToken, boolean>>;
-  fallbackExtension: string;
+  has2x?: Partial<Record<BreakpointToken, boolean>>;
+  fallbackExtension?: string;
   alt?: string;
   imgWidth?: number;
   imgHeight?: number;
 }): string {
-  const { baseName, tokens, has2x, fallbackExtension } = options;
+  const { baseName, tokens } = options;
+  const has2x = options.has2x ?? {};
+  const fallbackExtension = options.fallbackExtension ?? 'jpg';
   const alt = options.alt ?? '';
   const ranges = mediaForTokens(tokens);
   const fallbackToken = ranges[ranges.length - 1]?.token ?? 'xl';
@@ -93,4 +68,22 @@ ${blocks.join('\n\n')}
     decoding="async"
   />
 </picture>`;
+}
+
+export function expectedArtFilenames(
+  baseName: string,
+  tokens: BreakpointToken[],
+  has2x: Partial<Record<BreakpointToken, boolean>> = {},
+  fallbackExtension = 'jpg',
+): string[] {
+  const names: string[] = [];
+  for (const token of tokens) {
+    for (const ext of ['avif', 'webp', fallbackExtension]) {
+      names.push(`${baseName}-${token}.${ext}`);
+      if (has2x[token] !== false) {
+        names.push(`${baseName}-${token}-2x.${ext}`);
+      }
+    }
+  }
+  return names;
 }

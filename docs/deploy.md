@@ -2,7 +2,7 @@
 
 [← к кейсу](../README.md)
 
-Приложение stateless: базы нет, картинка живёт в памяти запроса. Хватает одного Docker-контейнера и около 1 ГБ RAM. Sharp держит файл в памяти, для исходников до 30 МБ лучше не опускаться ниже этого объёма.
+Приложение stateless: базы нет, картинка живёт в памяти запроса. Хватает одного Docker-контейнера и около 1 ГБ RAM. Sharp держит файл в памяти, для исходников до 30 МБ лучше не опускаться ниже этого объёма. Одновременно обрабатываются два изображения, лишние ждут в очереди процесса.
 
 ## Переменные окружения
 
@@ -19,8 +19,11 @@
 | `SMTP_PASS` | пароль приложения | Не обычный пароль почты |
 | `SMTP_FROM` | опционально | From. По умолчанию равен `SMTP_USER` |
 | `BUG_REPORT_TO` | `you@example.com` | Куда слать багрепорты |
+| `LOG_LEVEL` | `info` | Уровень JSON-логов: `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`. В production по умолчанию `info`, при локальной разработке `debug` |
 
 Без `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` или без `BUG_REPORT_TO` `POST /api/bug-report` отвечает `503`.
+
+Логи пишутся в stdout одной JSON-строкой на событие. По `SIGTERM` и `SIGINT` сервер перестаёт принимать новые соединения, дожидается текущих запросов и завершается. Если запросы не закончились за 10 секунд, процесс выходит с кодом 1. В Compose на остановку отведено 15 секунд.
 
 Пароль приложения Яндекса: [id.yandex.ru/security/app-passwords](https://id.yandex.ru/security/app-passwords), тип «Почта».
 
@@ -32,7 +35,7 @@
 docker compose up --build -d
 ```
 
-Открыть http://localhost:3001. Проверка: http://localhost:3001/api/health.
+Открыть http://localhost:3001. Проверка: http://localhost:3001/api/health — в JSON есть `ok`, `version` и `uptime`.
 
 Другой порт на хосте:
 
@@ -49,20 +52,39 @@ docker run --rm -p 3001:3001 imageshelper
 
 Остановка: `docker compose down`.
 
-Образ многостадийный: зависимости, сборка клиента и сервера, затем `node:22-bookworm-slim` под пользователем `app`. Каталог статики — `/app/client/dist`.
+Образ многостадийный: зависимости, сборка клиента и сервера, затем `node:22-bookworm-slim` под пользователем `app`. Каталог статики — `/app/client/dist`. В образ попадает `server/package.json`: из него health берёт `version`.
+
+## Мониторинг
+
+Внутри контейнера healthcheck уже есть: Dockerfile и Compose раз в 30 секунд запрашивают `http://127.0.0.1:3001/api/health` и считают процесс живым при ответе `200`.
+
+Снаружи тот же адрес проверяет [UptimeRobot](https://uptimerobot.com/). Бесплатный план опрашивает раз в 5 минут.
+
+1. Add New Monitor → **HTTP(s) - Keyword**.
+2. URL — `https://fitpix.ru/api/health`.
+3. Keyword — `"ok":true`, алерт **keyword exists**. Fastify сериализует JSON без пробелов, фрагмент в теле выглядит именно так.
+4. Monitoring Interval — 5 minutes.
+5. Alert Contacts — почта или Telegram.
+
+После сохранения монитора откройте Status Pages и сделайте страницу публичной. Id монитора (`m…`) виден в его URL и в настройках бейджа UptimeRobot. Его подставляют в shields.io:
+
+```markdown
+[![Uptime](https://img.shields.io/uptimerobot/ratio/m123456789-xxxxxxxx)](https://stats.uptimerobot.com/xxxxxxxx)
+```
+
+Бейдж аптайма имеет смысл добавить в README, когда id уже есть. Сейчас в шапке стоит баннер live demo на https://fitpix.ru.
 
 ## Что выбрать
 
 | Вариант | Когда брать | Оценка |
 |---------|-------------|--------|
 | **Timeweb Cloud → Apps / Docker** | Поднять за 10–15 минут, есть UI и домен | Баланс скорости и простоты |
-| **Amvera** | Деплой из Git или Dockerfile, без своей админки VPS | Самый простой PaaS. В репозитории есть `amvera.yml`, порт контейнера `3001` |
 | **VPS (Timeweb / Beget / VDSina)** и `docker compose` | Нужен контроль и дешевле надолго | Универсальный вариант |
 | **Selectel / Yandex Cloud** | Уже есть аккаунт и нужна масштабируемость | Избыточно для старта |
 
-Для быстрого старта — Timeweb Cloud Apps или Amvera. Если удобен SSH — любой дешёвый VPS и `docker compose up -d`.
+Для быстрого старта — Timeweb Cloud Apps. Если удобен SSH — любой дешёвый VPS и `docker compose up -d`.
 
-На Amvera номер Метрики задаётся на этапе **Запуск**: сервер подставляет `VITE_YM_ID` в HTML уже при отдаче страницы. На сборке эта переменная процессу Vite может быть недоступна, и это нормально.
+Номер Метрики задаётся при запуске контейнера: сервер подставляет `VITE_YM_ID` в HTML уже при отдаче страницы. На сборке эта переменная процессу Vite может быть недоступна, и это нормально.
 
 ## VPS
 

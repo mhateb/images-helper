@@ -1,9 +1,8 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { MAX_SCREENSHOT_BYTES, MAX_SCREENSHOT_MB } from 'shared';
 import { trackGoal, YM_GOALS } from '../analytics/ym';
 import { sendBugReport } from '../api/bugReport';
 import styles from './BugReportModal.module.css';
-
-const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024;
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif';
 
 type BugReportModalProps = {
@@ -69,7 +68,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
       return;
     }
     if (file.size > MAX_SCREENSHOT_BYTES) {
-      setError('Скриншот больше 5 МБ. Сожмите или обрежьте картинку.');
+      setError(`Скриншот больше ${MAX_SCREENSHOT_MB} МБ. Сожмите или обрежьте картинку.`);
       return;
     }
     setError(null);
@@ -179,7 +178,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
               >
                 Выбрать файл
               </button>
-              <p className={styles.fileHint}>JPEG, PNG, WebP, GIF до 5 МБ</p>
+              <p className={styles.fileHint}>JPEG, PNG, WebP, GIF до {MAX_SCREENSHOT_MB} МБ</p>
             </div>
             <input
               ref={fileRef}

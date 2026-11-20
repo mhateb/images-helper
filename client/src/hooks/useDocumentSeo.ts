@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { SPA_PATHS, normalizePath } from 'shared';
 import {
   DEFAULT_OG_IMAGE,
   SITE_LOCALE,
@@ -66,10 +67,7 @@ export function useDocumentSeo(path: string) {
     upsertLink('canonical', url);
     upsertJsonLd(jsonLdForPath(path));
 
-    const robots =
-      path === '/' || path === '/guide' || path === '/analyze' || path === '/privacy'
-        ? 'index,follow'
-        : 'noindex,nofollow';
+    const robots = SPA_PATHS.has(normalizePath(path)) ? 'index,follow' : 'noindex,nofollow';
     upsertMeta('name', 'robots', robots);
   }, [path]);
 }

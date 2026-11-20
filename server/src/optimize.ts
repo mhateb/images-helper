@@ -1,4 +1,7 @@
 import sharp from 'sharp';
+import { BP, BP_ORDER, type BreakpointToken } from 'shared';
+import { log } from './logger.js';
+import { withSharpLimit } from './sharpLimit.js';
 
 export type OutputFormat = 'optimized' | 'webp' | 'avif';
 
@@ -120,8 +123,9 @@ async function applyTrim(input: Buffer): Promise<Buffer> {
     return await sharp(input, { failOn: 'none' })
       .trim({ threshold: 10 })
       .toBuffer();
-  } catch {
-    // Solid / nearly solid images: trim has nothing useful to cut.
+  } catch (error) {
+    // Однотонный кадр: trim не находит край. Это ожидаемый путь, не сбой запроса.
+    log().debug({ err: error }, 'trim skipped');
     return input;
   }
 }
@@ -251,7 +255,7 @@ async function encodeBuffer(
   };
 }
 
-export async function optimizeImage(
+async function optimizeImageNow(
   input: Buffer,
   originalSize: number,
   options: OptimizeOptions,
@@ -269,7 +273,15 @@ export async function optimizeImage(
   );
 }
 
-export async function optimizeAllFormats(
+export function optimizeImage(
+  input: Buffer,
+  originalSize: number,
+  options: OptimizeOptions,
+): Promise<OptimizeResult> {
+  return withSharpLimit(() => optimizeImageNow(input, originalSize, options));
+}
+
+async function optimizeAllFormatsNow(
   input: Buffer,
   originalSize: number,
   options: PrepareOptions,
@@ -299,14 +311,13 @@ export async function optimizeAllFormats(
   return results;
 }
 
-/** Project breakpoints — keep in sync with client/src/constants/breakpoints.ts */
-export const BP = {
-  md: 768,
-  lg: 1024,
-  xl: 1280,
-} as const;
-
-export type BreakpointToken = keyof typeof BP;
+export function optimizeAllFormats(
+  input: Buffer,
+  originalSize: number,
+  options: PrepareOptions,
+): Promise<OptimizeVariant[]> {
+  return withSharpLimit(() => optimizeAllFormatsNow(input, originalSize, options));
+}
 
 export interface ResponsiveFile {
   filename: string;
@@ -323,7 +334,7 @@ export interface ResponsiveFile {
  * Per-breakpoint art direction: each upload is @2x for that token.
  * Emits `{base}-{token}.{ext}` (1x) and `{base}-{token}-2x.{ext}` when larger.
  */
-export async function optimizeArtDirection(
+async function optimizeArtDirectionNow(
   slots: {
     token: BreakpointToken;
     buffer: Buffer;
@@ -351,9 +362,8 @@ export async function optimizeArtDirection(
   let imgWidth: number = BP.xl;
   let imgHeight = 0;
 
-  const order: BreakpointToken[] = ['md', 'lg', 'xl'];
   const sorted = [...slots].sort(
-    (a, b) => order.indexOf(a.token) - order.indexOf(b.token),
+    (a, b) => BP_ORDER.indexOf(a.token) - BP_ORDER.indexOf(b.token),
   );
 
   for (const slot of sorted) {
@@ -444,4 +454,19 @@ export async function optimizeArtDirection(
     imgWidth,
     imgHeight,
   };
+}
+
+export function optimizeArtDirection(
+  slots: {
+    token: BreakpointToken;
+    buffer: Buffer;
+    crop?: CropRect;
+  }[],
+  options: {
+    trim: boolean;
+    quality: number;
+    baseName: string;
+  },
+): ReturnType<typeof optimizeArtDirectionNow> {
+  return withSharpLimit(() => optimizeArtDirectionNow(slots, options));
 }

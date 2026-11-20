@@ -1,6 +1,8 @@
-export type OutputFormat = 'optimized' | 'webp' | 'avif';
+import type { BreakpointToken } from 'shared';
 
-export type BreakpointToken = 'md' | 'lg' | 'xl';
+export type { BreakpointToken };
+
+export type OutputFormat = 'optimized' | 'webp' | 'avif';
 
 export interface CropArea {
   x: number;

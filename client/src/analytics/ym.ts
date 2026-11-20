@@ -30,7 +30,7 @@ type YmQueue = {
 declare global {
   interface Window {
     ym?: YmQueue;
-    /** Injected by server from runtime env (Amvera "Запуск"). */
+    /** Injected by server from runtime env. */
     __FITPIX_YM_ID__?: number;
   }
 }
@@ -66,6 +66,17 @@ function ensureYmStub(): YmQueue {
   return queue;
 }
 
+/** tag.js copies this nonce onto scripts it inserts (Webvisor, click map). */
+function documentCspNonce(): string {
+  const nodes = document.querySelectorAll<HTMLScriptElement | HTMLStyleElement | HTMLLinkElement>(
+    'script, style, link',
+  );
+  for (const node of nodes) {
+    if (node.nonce) return node.nonce;
+  }
+  return '';
+}
+
 function injectTagScript(): Promise<void> {
   const existing = document.querySelector<HTMLScriptElement>(`script[src="${TAG_SRC}"]`);
   if (existing) {
@@ -82,6 +93,8 @@ function injectTagScript(): Promise<void> {
     const script = document.createElement('script');
     script.src = TAG_SRC;
     script.async = true;
+    const nonce = documentCspNonce();
+    if (nonce) script.nonce = nonce;
     script.onload = () => {
       script.dataset.loaded = '1';
       resolve();

@@ -1,8 +1,13 @@
+import { lookup as dnsLookup, type LookupAddress, type LookupOptions } from 'node:dns';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import JSZip from 'jszip';
 import sharp from 'sharp';
+import { Agent, fetch } from 'undici';
+import { UpstreamError, ValidationError } from './errors.js';
+import { log, publicUrl } from './logger.js';
 import { optimizeAllFormats, optimizeImage, type OutputFormat } from './optimize.js';
+import { withSharpLimit } from './sharpLimit.js';
 
 const PAGE_TIMEOUT_MS = 12_000;
 const IMAGE_TIMEOUT_MS = 10_000;
@@ -16,6 +21,11 @@ const FETCH_CONCURRENCY = 6;
 const ZIP_CONCURRENCY = 4;
 const ESTIMATE_QUALITY = 80;
 const USER_AGENT = 'FitpixPageAnalyzer/1.0 (+https://fitpix.ru)';
+const LOCAL_HOST_MESSAGE = 'Нельзя анализировать локальные адреса.';
+const PRIVATE_IP_MESSAGE = 'Нельзя анализировать внутренние IP-адреса.';
+const PRIVATE_NAME_MESSAGE = 'Домен указывает на внутренний адрес — анализ недоступен.';
+const DNS_FAILURE_MESSAGE = 'Не удалось разрешить домен страницы.';
+const BLOCKED_ADDRESS_CODE = 'EBLOCKEDIP';
 
 export const ANALYZE_LIMITS = {
   maxAnalyzeImages: MAX_IMAGES,
@@ -144,15 +154,127 @@ export function isPrivateIp(ip: string): boolean {
   return true;
 }
 
+function normalizedHost(hostname: string): string {
+  return hostname.replace(/^\[|\]$/g, '').toLowerCase();
+}
+
+function isLocalHostname(host: string): boolean {
+  return !host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local');
+}
+
+function blockedAddress(message: string): NodeJS.ErrnoException {
+  const error = new Error(message) as NodeJS.ErrnoException;
+  error.name = 'BlockedAddressError';
+  error.code = BLOCKED_ADDRESS_CODE;
+  return error;
+}
+
+type PublicLookupCallback = (
+  error: NodeJS.ErrnoException | null,
+  address: string | LookupAddress[],
+  family?: number,
+) => void;
+
+function rejectLookup(callback: PublicLookupCallback, error: NodeJS.ErrnoException): void {
+  // При ошибке сокет смотрит только на неё. Пустой список адресов не используется.
+  callback(error, []);
+}
+
+/**
+ * Lookup, который вызывает сокет. Возвращённый адрес и есть адрес соединения:
+ * после callback имя больше не резолвится.
+ */
+export function lookupPublicAddress(
+  hostname: string,
+  options: LookupOptions,
+  callback: PublicLookupCallback,
+): void {
+  const host = normalizedHost(hostname);
+  if (isLocalHostname(host)) {
+    rejectLookup(callback, blockedAddress(LOCAL_HOST_MESSAGE));
+    return;
+  }
+
+  const literalFamily = isIP(host);
+  if (literalFamily === 4 || literalFamily === 6) {
+    if (isPrivateIp(host)) {
+      rejectLookup(callback, blockedAddress(PRIVATE_IP_MESSAGE));
+      return;
+    }
+    if (options.all) {
+      callback(null, [{ address: host, family: literalFamily }]);
+      return;
+    }
+    callback(null, host, literalFamily);
+    return;
+  }
+
+  dnsLookup(
+    host,
+    { family: options.family, hints: options.hints, all: true, verbatim: true },
+    (error, addresses) => {
+      if (error) {
+        rejectLookup(callback, error);
+        return;
+      }
+      if (!Array.isArray(addresses) || addresses.length === 0) {
+        const failure = new Error(DNS_FAILURE_MESSAGE) as NodeJS.ErrnoException;
+        failure.code = 'ENOTFOUND';
+        rejectLookup(callback, failure);
+        return;
+      }
+      for (const record of addresses) {
+        if (isPrivateIp(record.address)) {
+          rejectLookup(callback, blockedAddress(PRIVATE_NAME_MESSAGE));
+          return;
+        }
+      }
+      if (options.all) {
+        callback(null, addresses);
+        return;
+      }
+      callback(null, addresses[0].address, addresses[0].family);
+    },
+  );
+}
+
+// Ранний assertPublicHostname и этот lookup — два разных DNS-запроса.
+const publicDispatcher = new Agent({
+  connect: {
+    lookup: lookupPublicAddress,
+  },
+});
+
+function findCause(
+  error: unknown,
+  predicate: (value: Error & NodeJS.ErrnoException) => boolean,
+): (Error & NodeJS.ErrnoException) | null {
+  const seen = new Set<unknown>();
+  const pending: unknown[] = [error];
+
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current || typeof current !== 'object' || seen.has(current)) continue;
+    seen.add(current);
+    if (current instanceof Error && predicate(current)) return current;
+
+    const record = current as { cause?: unknown; errors?: unknown };
+    if (record.cause) pending.push(record.cause);
+    if (Array.isArray(record.errors)) pending.push(...record.errors);
+  }
+
+  return null;
+}
+
 async function assertPublicHostname(hostname: string): Promise<void> {
-  const host = hostname.replace(/^\[|\]$/g, '').toLowerCase();
-  if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) {
-    throw new Error('Нельзя анализировать локальные адреса.');
+  const host = normalizedHost(hostname);
+  if (isLocalHostname(host)) {
+    throw new ValidationError(LOCAL_HOST_MESSAGE);
   }
 
   if (isIP(host)) {
     if (isPrivateIp(host)) {
-      throw new Error('Нельзя анализировать внутренние IP-адреса.');
+      throw new ValidationError(PRIVATE_IP_MESSAGE);
     }
     return;
   }
@@ -160,17 +282,20 @@ async function assertPublicHostname(hostname: string): Promise<void> {
   let records: { address: string; family: number }[];
   try {
     records = await lookup(host, { all: true, verbatim: true });
-  } catch {
-    throw new Error('Не удалось разрешить домен страницы.');
+  } catch (error) {
+    throw new UpstreamError(DNS_FAILURE_MESSAGE, 422, {
+      cause: error,
+      details: { hostname: host },
+    });
   }
 
   if (records.length === 0) {
-    throw new Error('Не удалось разрешить домен страницы.');
+    throw new UpstreamError(DNS_FAILURE_MESSAGE, 422);
   }
 
   for (const record of records) {
     if (isPrivateIp(record.address)) {
-      throw new Error('Домен указывает на внутренний адрес — анализ недоступен.');
+      throw new ValidationError(PRIVATE_NAME_MESSAGE);
     }
   }
 }
@@ -193,10 +318,10 @@ export async function fetchRemoteImage(rawUrl: string): Promise<FetchedRemoteIma
 
   const contentType = guessMime(rawUrl, fetched.contentType);
   if (!contentType.startsWith('image/')) {
-    throw new Error('По ссылке не изображение.');
+    throw new ValidationError('По ссылке не изображение.');
   }
   if (contentType === 'image/svg+xml') {
-    throw new Error('SVG лучше открывать в инструменте вручную.');
+    throw new ValidationError('SVG лучше открывать в инструменте вручную.');
   }
 
   return {
@@ -210,7 +335,7 @@ export async function fetchRemoteImage(rawUrl: string): Promise<FetchedRemoteIma
 export async function normalizePageUrl(raw: string): Promise<URL> {
   const trimmed = raw.trim();
   if (!trimmed) {
-    throw new Error('Укажите URL страницы.');
+    throw new ValidationError('Укажите URL страницы.');
   }
 
   let withProtocol = trimmed;
@@ -221,16 +346,16 @@ export async function normalizePageUrl(raw: string): Promise<URL> {
   let url: URL;
   try {
     url = new URL(withProtocol);
-  } catch {
-    throw new Error('Некорректный URL.');
+  } catch (error) {
+    throw new ValidationError('Некорректный URL.', { cause: error });
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error('Допустимы только ссылки http и https.');
+    throw new ValidationError('Допустимы только ссылки http и https.');
   }
 
   if (url.username || url.password) {
-    throw new Error('URL с логином и паролем не поддерживается.');
+    throw new ValidationError('URL с логином и паролем не поддерживается.');
   }
 
   await assertPublicHostname(url.hostname);
@@ -258,6 +383,7 @@ async function fetchWithLimits(
         method: 'GET',
         redirect: 'manual',
         signal: controller.signal,
+        dispatcher: publicDispatcher,
         headers: {
           Accept: options.accept,
           'User-Agent': USER_AGENT,
@@ -267,21 +393,21 @@ async function fetchWithLimits(
       if ([301, 302, 303, 307, 308].includes(response.status)) {
         const location = response.headers.get('location');
         if (!location) {
-          throw new Error('Редирект без адреса Location.');
+          throw new UpstreamError('Редирект без адреса Location.', 422);
         }
         current = new URL(location, current);
         if (current.protocol !== 'http:' && current.protocol !== 'https:') {
-          throw new Error('Небезопасный редирект.');
+          throw new UpstreamError('Небезопасный редирект.', 422);
         }
         continue;
       }
 
       if (!response.ok) {
-        throw new Error(`Страница ответила кодом ${response.status}.`);
+        throw new UpstreamError(`Страница ответила кодом ${response.status}.`, 422);
       }
 
       if (!response.body) {
-        throw new Error('Пустой ответ сервера.');
+        throw new UpstreamError('Пустой ответ сервера.');
       }
 
       const contentType = (response.headers.get('content-type') || '').split(';')[0].trim();
@@ -294,8 +420,13 @@ async function fetchWithLimits(
         if (done) break;
         total += value.byteLength;
         if (total > options.maxBytes) {
-          reader.cancel().catch(() => undefined);
-          throw new Error('Ответ слишком большой для анализа.');
+          const url = `${current.origin}${current.pathname}`;
+          void reader.cancel().catch((cancelError: unknown) => {
+            log().debug({ err: cancelError, url }, 'response body cancel failed');
+          });
+          throw new UpstreamError('Ответ слишком большой для анализа.', 422, {
+            details: { url },
+          });
         }
         chunks.push(Buffer.from(value));
       }
@@ -306,16 +437,37 @@ async function fetchWithLimits(
         finalUrl: current.toString(),
       };
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Превышено время ожидания ответа.');
+      if (error instanceof ValidationError || error instanceof UpstreamError) {
+        throw error;
       }
-      throw error;
+      const url = `${current.origin}${current.pathname}`;
+      const blocked = findCause(error, (value) => value.code === BLOCKED_ADDRESS_CODE);
+      if (blocked) {
+        throw new ValidationError(blocked.message, { cause: error, details: { url } });
+      }
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new UpstreamError('Превышено время ожидания ответа.', 422, {
+          cause: error,
+          details: { url },
+        });
+      }
+      if (findCause(error, (value) => value.code === 'ENOTFOUND' || value.code === 'EAI_AGAIN')) {
+        throw new UpstreamError(DNS_FAILURE_MESSAGE, 422, {
+          cause: error,
+          details: { url },
+        });
+      }
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Не удалось получить ответ.';
+      throw new UpstreamError(message, 502, { cause: error, details: { url } });
     } finally {
       clearTimeout(timer);
     }
   }
 
-  throw new Error('Слишком много редиректов.');
+  throw new UpstreamError('Слишком много редиректов.', 422);
 }
 
 function decodeHtmlEntities(value: string): string {
@@ -337,8 +489,8 @@ function addCandidate(urls: Set<string>, raw: string, base: URL) {
     if (absolute.protocol !== 'http:' && absolute.protocol !== 'https:') return;
     absolute.hash = '';
     urls.add(absolute.toString());
-  } catch {
-    // ignore invalid urls
+  } catch (error) {
+    log().debug({ err: error }, 'skipped invalid image url');
   }
 }
 
@@ -395,7 +547,8 @@ function fileNameFromUrl(url: string): string {
     const pathname = new URL(url).pathname;
     const base = pathname.split('/').filter(Boolean).pop() || 'image';
     return decodeURIComponent(base).slice(0, 120);
-  } catch {
+  } catch (error) {
+    log().debug({ err: error }, 'image file name fallback');
     return 'image';
   }
 }
@@ -414,13 +567,16 @@ function guessMime(url: string, headerMime: string): string {
 
 async function makeThumbnail(buffer: Buffer): Promise<string | null> {
   try {
-    const thumb = await sharp(buffer, { failOn: 'none', animated: false })
-      .rotate()
-      .resize({ width: 72, height: 72, fit: 'cover', withoutEnlargement: true })
-      .webp({ quality: 60 })
-      .toBuffer();
+    const thumb = await withSharpLimit(() =>
+      sharp(buffer, { failOn: 'none', animated: false })
+        .rotate()
+        .resize({ width: 72, height: 72, fit: 'cover', withoutEnlargement: true })
+        .webp({ quality: 60 })
+        .toBuffer(),
+    );
     return `data:image/webp;base64,${thumb.toString('base64')}`;
-  } catch {
+  } catch (error) {
+    log().warn({ err: error }, 'thumbnail failed');
     return null;
   }
 }
@@ -500,6 +656,7 @@ async function analyzeOneImage(imageUrl: string): Promise<AnalyzedImage> {
     base.thumbnailDataUrl = await makeThumbnail(fetched.buffer);
     return base;
   } catch (error) {
+    log().warn({ err: error, url: publicUrl(imageUrl) }, 'image analysis failed');
     base.error = error instanceof Error ? error.message : 'Не удалось загрузить';
     return base;
   }
@@ -536,7 +693,7 @@ export async function analyzePage(rawUrl: string): Promise<AnalyzePageResult> {
 
   const htmlType = page.contentType.toLowerCase();
   if (htmlType && !htmlType.includes('html') && !htmlType.includes('xml') && !htmlType.includes('text/')) {
-    throw new Error('По ссылке не HTML-страница.');
+    throw new UpstreamError('По ссылке не HTML-страница.', 422);
   }
 
   const html = page.buffer.toString('utf8');
@@ -654,6 +811,7 @@ async function optimizeRemoteForZip(imageUrl: string): Promise<ZipItemOk | ZipIt
       optimizedBytes: optimized.optimizedSize,
     };
   } catch (error) {
+    log().warn({ err: error, url: publicUrl(imageUrl) }, 'zip image failed');
     return {
       ok: false,
       url: imageUrl,
@@ -681,7 +839,7 @@ export async function buildOptimizedZipFromUrls(
   }
 
   if (unique.length === 0) {
-    throw new Error('Нет изображений для скачивания.');
+    throw new UpstreamError('Нет изображений для скачивания.', 422);
   }
 
   const results = await mapPool(unique, ZIP_CONCURRENCY, (url) => optimizeRemoteForZip(url));
@@ -689,7 +847,7 @@ export async function buildOptimizedZipFromUrls(
   const zip = new JSZip();
   const folder = zip.folder('optimized');
   if (!folder) {
-    throw new Error('Не удалось создать архив.');
+    throw new UpstreamError('Не удалось создать архив.');
   }
 
   const usedNames = new Set<string>();
@@ -735,10 +893,11 @@ export async function buildOptimizedZipFromUrls(
   }
 
   if (included === 0) {
-    throw new Error(
+    throw new UpstreamError(
       failed > 0
         ? 'Не удалось оптимизировать ни одного изображения.'
         : 'Все изображения отфильтрованы лимитом веса.',
+      422,
     );
   }
 

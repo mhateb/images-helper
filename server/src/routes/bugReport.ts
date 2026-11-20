@@ -1,5 +1,11 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { BUG_REPORT_TO, MAX_SCREENSHOT_SIZE } from '../config.js';
+import {
+  BUG_REPORT_RATE_LIMIT,
+  BUG_REPORT_RATE_WINDOW_MS,
+  BUG_REPORT_TO,
+  MAX_SCREENSHOT_SIZE,
+} from '../config.js';
+import { takeRateLimitToken } from '../rateLimit.js';
 import {
   isSmtpConfigured,
   sendBugReportEmail,
@@ -66,7 +72,7 @@ async function readBugReportUpload(
       }
     }
   } catch (error) {
-    request.log.error(error);
+    request.log.warn({ err: error }, 'multipart parse failed');
     return { error: { code: 400, message: 'Некорректный multipart-запрос.' } };
   }
 
@@ -97,7 +103,25 @@ async function readBugReportUpload(
 }
 
 export function registerBugReportRoutes(app: FastifyInstance): void {
+  if (!isSmtpConfigured() || !BUG_REPORT_TO) {
+    app.log.warn('bug reports disabled: smtp is not configured');
+  }
+
   app.post('/api/bug-report', async (request, reply) => {
+    const rate = takeRateLimitToken(
+      `bug-report:${request.ip}`,
+      BUG_REPORT_RATE_LIMIT,
+      BUG_REPORT_RATE_WINDOW_MS,
+    );
+    if (!rate.ok) {
+      return reply
+        .code(429)
+        .header('Retry-After', String(rate.retryAfterSec))
+        .send({
+          error: `Слишком много сообщений. Подождите ~${rate.retryAfterSec} сек.`,
+        });
+    }
+
     if (!isSmtpConfigured() || !BUG_REPORT_TO) {
       return reply.code(503).send({
         error: 'Отправка сообщений временно недоступна: не настроен SMTP.',
@@ -113,7 +137,7 @@ export function registerBugReportRoutes(app: FastifyInstance): void {
       await sendBugReportEmail(upload);
       return reply.send({ ok: true });
     } catch (error) {
-      request.log.error(error);
+      request.log.error({ err: error }, 'bug report send failed');
       return reply.code(502).send({
         error: 'Не удалось отправить сообщение. Попробуйте позже.',
       });

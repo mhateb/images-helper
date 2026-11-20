@@ -1,10 +1,11 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import {
   ANALYZE_LIMITS,
   analyzePage,
   buildOptimizedZipFromUrls,
   fetchRemoteImage,
 } from '../analyzePage.js';
+import { ValidationError } from '../errors.js';
 import {
   ANALYZE_RATE_LIMIT,
   ANALYZE_RATE_WINDOW_MS,
@@ -18,14 +19,6 @@ import {
   tryAcquireZipSlot,
 } from '../rateLimit.js';
 
-function clientIp(request: FastifyRequest): string {
-  const forwarded = request.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.trim()) {
-    return forwarded.split(',')[0]?.trim() || request.ip;
-  }
-  return request.ip;
-}
-
 function sanitizeBaseName(value: unknown, fallback: string): string {
   const raw = String(value ?? '').trim() || fallback;
   const cleaned = raw
@@ -38,7 +31,7 @@ function sanitizeBaseName(value: unknown, fallback: string): string {
 
 export function registerAnalyzeRoutes(app: FastifyInstance): void {
   app.post('/api/analyze-page', async (request, reply) => {
-    const ip = clientIp(request);
+    const ip = request.ip;
     const rate = takeRateLimitToken(
       `analyze:${ip}`,
       ANALYZE_RATE_LIMIT,
@@ -56,25 +49,12 @@ export function registerAnalyzeRoutes(app: FastifyInstance): void {
     const body = (request.body ?? {}) as { url?: unknown };
     const rawUrl = typeof body.url === 'string' ? body.url : '';
 
-    try {
-      const result = await analyzePage(rawUrl);
-      return reply.send(result);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Не удалось проанализировать страницу.';
-      const code =
-        /локальн|внутренн|Некорректный|Укажите|Допустимы|логином/i.test(message)
-          ? 400
-          : /Превышено|ответила|разрешить|Редирект|слишком|HTML/i.test(message)
-            ? 422
-            : 502;
-      if (code >= 500) request.log.error(error);
-      return reply.code(code).send({ error: message });
-    }
+    const result = await analyzePage(rawUrl);
+    return reply.send(result);
   });
 
   app.post('/api/analyze-fetch-image', async (request, reply) => {
-    const ip = clientIp(request);
+    const ip = request.ip;
     const rate = takeRateLimitToken(`fetch-image:${ip}`, 30, ANALYZE_RATE_WINDOW_MS);
     if (!rate.ok) {
       return reply
@@ -88,50 +68,35 @@ export function registerAnalyzeRoutes(app: FastifyInstance): void {
     const body = (request.body ?? {}) as { url?: unknown };
     const rawUrl = typeof body.url === 'string' ? body.url : '';
     if (!rawUrl.trim()) {
-      return reply.code(400).send({ error: 'Укажите URL изображения.' });
+      throw new ValidationError('Укажите URL изображения.');
     }
 
-    try {
-      const image = await fetchRemoteImage(rawUrl);
-      const baseName = sanitizeBaseName(image.fileName, 'image');
-      const ext =
-        image.contentType === 'image/jpeg'
-          ? 'jpg'
-          : image.contentType === 'image/png'
-            ? 'png'
-            : image.contentType === 'image/webp'
-              ? 'webp'
-              : image.contentType === 'image/avif'
-                ? 'avif'
-                : image.contentType === 'image/gif'
-                  ? 'gif'
-                  : 'bin';
+    const image = await fetchRemoteImage(rawUrl);
+    const baseName = sanitizeBaseName(image.fileName, 'image');
+    const ext =
+      image.contentType === 'image/jpeg'
+        ? 'jpg'
+        : image.contentType === 'image/png'
+          ? 'png'
+          : image.contentType === 'image/webp'
+            ? 'webp'
+            : image.contentType === 'image/avif'
+              ? 'avif'
+              : image.contentType === 'image/gif'
+                ? 'gif'
+                : 'bin';
 
-      reply
-        .header('Content-Type', image.contentType)
-        .header('Content-Disposition', `inline; filename="${baseName}.${ext}"`)
-        .header('X-Extension', ext)
-        .header('X-File-Name', `${baseName}.${ext}`);
+    reply
+      .header('Content-Type', image.contentType)
+      .header('Content-Disposition', `inline; filename="${baseName}.${ext}"`)
+      .header('X-Extension', ext)
+      .header('X-File-Name', `${baseName}.${ext}`);
 
-      return reply.send(image.buffer);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Не удалось загрузить изображение.';
-      const code =
-        /локальн|внутренн|Некорректный|Укажите|Допустимы|логином|не изображение|SVG/i.test(
-          message,
-        )
-          ? 400
-          : /Превышено|ответила|разрешить|Редирект|слишком/i.test(message)
-            ? 422
-            : 502;
-      if (code >= 500) request.log.error(error);
-      return reply.code(code).send({ error: message });
-    }
+    return reply.send(image.buffer);
   });
 
   app.post('/api/analyze-download-zip', async (request, reply) => {
-    const ip = clientIp(request);
+    const ip = request.ip;
     const rate = takeRateLimitToken(`zip:${ip}`, ZIP_RATE_LIMIT, ZIP_RATE_WINDOW_MS);
     if (!rate.ok) {
       return reply
@@ -155,14 +120,14 @@ export function registerAnalyzeRoutes(app: FastifyInstance): void {
 
     if (urls.length === 0) {
       releaseZipSlot();
-      return reply.code(400).send({ error: 'Передайте список URL изображений.' });
+      throw new ValidationError('Передайте список URL изображений.');
     }
 
     if (urls.length > ANALYZE_LIMITS.maxZipImages) {
       releaseZipSlot();
-      return reply.code(400).send({
-        error: `В архив можно положить не больше ${ANALYZE_LIMITS.maxZipImages} изображений.`,
-      });
+      throw new ValidationError(
+        `В архив можно положить не больше ${ANALYZE_LIMITS.maxZipImages} изображений.`,
+      );
     }
 
     try {
@@ -174,7 +139,8 @@ export function registerAnalyzeRoutes(app: FastifyInstance): void {
                 return new URL(
                   body.pageUrl.startsWith('http') ? body.pageUrl : `https://${body.pageUrl}`,
                 ).hostname.replace(/[^a-zA-Z0-9.-]+/g, '-').slice(0, 40);
-              } catch {
+              } catch (error) {
+                request.log.debug({ err: error }, 'zip filename host fallback');
                 return 'site';
               }
             })()
@@ -192,14 +158,6 @@ export function registerAnalyzeRoutes(app: FastifyInstance): void {
         .header('X-Zip-Requested', String(result.requested));
 
       return reply.send(result.zip);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Не удалось собрать архив.';
-      const code = /Нет изображений|Не удалось оптимизировать|отфильтрованы/i.test(message)
-        ? 422
-        : 502;
-      if (code >= 500) request.log.error(error);
-      return reply.code(code).send({ error: message });
     } finally {
       releaseZipSlot();
     }

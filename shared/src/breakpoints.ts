@@ -1,4 +1,4 @@
-/** Project breakpoints — keep in sync with server/src/optimize.ts */
+/** Widths used by art direction, the guide, and `<picture>` media queries. */
 export const BP = {
   md: 768,
   lg: 1024,
@@ -8,6 +8,10 @@ export const BP = {
 export type BreakpointToken = keyof typeof BP;
 
 export const BP_ORDER: BreakpointToken[] = ['md', 'lg', 'xl'];
+
+export function isBreakpointToken(value: string): value is BreakpointToken {
+  return (BP_ORDER as readonly string[]).includes(value);
+}
 
 /** Media queries for filled breakpoints, narrow → wide. Last has no media (fallback). */
 export function mediaForTokens(

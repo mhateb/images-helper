@@ -32,6 +32,7 @@ jobs:
 
       - name: tsc
         run: |
+          npm run build -w shared
           npm exec -w server -- tsc --noEmit --pretty false
           npm exec -w client -- tsc -b --pretty false
 
