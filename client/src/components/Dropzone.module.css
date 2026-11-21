@@ -29,15 +29,29 @@
 
 .zone:hover,
 .dragging {
-  background: color-mix(in srgb, var(--accent-soft) 55%, white);
+  background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.zone:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .input {
   position: absolute;
-  inset: 0;
-  opacity: 0;
-  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.input:focus {
+  outline: none;
 }
 
 .iconWrap {
@@ -75,6 +89,7 @@
 }
 
 .title {
+  display: block;
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 600;
@@ -82,6 +97,7 @@
 }
 
 .hint {
+  display: block;
   margin: 0;
   font-size: 0.8125rem;
   color: var(--muted);

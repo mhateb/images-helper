@@ -23,7 +23,7 @@ export function ConsentBanner({ onConsentChange, onOpenPrivacy }: ConsentBannerP
   };
 
   return (
-    <div className={styles.banner} role="dialog" aria-label="Согласие на cookies">
+    <div className={styles.banner} role="region" aria-label="Согласие на cookies">
       <p className={styles.text}>
         Мы используем Яндекс.Метрику, чтобы понимать, как работает Fitpix. Подробнее — в{' '}
         <a href="/privacy" className={styles.link} onClick={onPrivacyClick}>

@@ -1,71 +1,96 @@
 # Fitpix
 
+[Русская версия](README.ru.md)
+
 [![CI](https://github.com/mhateb/images-helper/actions/workflows/ci.yml/badge.svg)](https://github.com/mhateb/images-helper/actions/workflows/ci.yml)
 [![Live demo](https://img.shields.io/badge/live%20demo-fitpix.ru-2ea44f)](https://fitpix.ru)
 
-Онлайн-оптимизация картинок для веба. Живое демо: **[fitpix.ru](https://fitpix.ru)**
+Image optimization for the web. Live demo: **[fitpix.ru](https://fitpix.ru)**
 
-Fitpix закрывает путь от тяжёлого экспорта до файла, который можно ставить в вёрстку. В одном месте: очередь до 20 изображений, кроп в пикселях исходника, сжатие JPEG/PNG, WebP и AVIF, и сразу видно, сколько байт это стоит. Рядом — разбор чужой страницы по URL: сервис читает её HTML, находит картинки и считает ту же экономию. Гайд на сайте разбирает `<picture>` на брейкпоинтах 768, 1024 и 1280, чтобы разметка не расходилась с размерами слотов.
+Fitpix turns a heavy design export into a file you can put in a layout:
 
-Регистрации нет. Файл живёт в памяти запроса и уходит в ответе, база не нужна.
+- a queue of up to 20 images;
+- a crop in the source image's pixels;
+- JPEG and PNG compression, conversion to WebP and AVIF, with the byte savings shown;
+- analysis of someone else's page by URL: the service reads the HTML, finds the images, and estimates what they weigh and what you can save;
+- a guide to `<picture>` at the 768, 1024, and 1280 breakpoints.
 
-## Как это выглядит
+No account. The file lives in the request memory and leaves in the response. There is no database.
 
-Загрузка, кроп и результат — основной сценарий. Четвёртый кадр — разбор статьи Wikipedia про JPEG: в HTML нашлось 71 изображение, в оценку попали первые 40.
+The interface is in Russian. Deployment, analytics, and API notes are in Russian too: [deploy](docs/deploy.md), [analytics](docs/analytics.md), [HTTP API](docs/api.md).
 
-![Загрузка: очередь пустая, рядом форматы и качество](docs/images/upload.png)
+## Lighthouse
 
-![Кроп: рамка на загруженном кадре, область уйдёт на сервер в пикселях исходника](docs/images/crop.png)
+Lighthouse 12.8.2, mobile preset, local production build (Fastify serving `client/dist`, Brotli):
 
-![Результат: превью и сравнение веса Optimized, WebP и AVIF](docs/images/result.png)
+| Category | Score |
+|----------|-------|
+| Performance | 99 |
+| Accessibility | 100 |
+| Best Practices | 100 |
+| SEO | 100 |
 
-![Анализ страницы: сколько весят картинки сейчас и сколько останется в WebP и AVIF](docs/images/analyze.png)
+FCP 1.4 s, LCP 1.9 s, Speed Index 1.4 s, TBT 0 ms, CLS 0. axe-core reported no violations on `/`, `/guide`, `/analyze`, `/privacy`, or the bug-report dialog. The home page was checked in light and dark, and with `prefers-reduced-motion`.
 
-## Стек
+The crop region is a named group: arrow keys move it, Shift and arrows resize it. The dropzone is a file input inside its label. The bug-report dialog moves focus in, traps Tab, and restores focus on close. Text colors meet WCAG AA. The UI follows `prefers-color-scheme` and turns entrance animations off when motion is reduced. A web app manifest (192 and 512 icons) and a service worker are included; HTML is not cached, because each document carries a one-time CSP nonce. The first paint uses the system UI font, so it does not wait on a third-party stylesheet.
 
-| Часть | Выбор | Почему |
-|-------|--------|--------|
-| Картинки | [Sharp](https://sharp.pixelplumbing.com/) (libvips) | Кроп, trim, ресайз, WebP и AVIF в одном процессе, без отдельного сервиса кодирования |
-| API и HTML | [Fastify](https://fastify.dev/) | Multipart, отдача статики и подстановка SEO живут в одном слушателе. На проде это единственный процесс |
-| Интерфейс | React 19 и Vite | Кроп и очередь — клиентское состояние. На сервер уходит уже прямоугольник в пикселях исходника |
-| Язык | TypeScript | Общие контракты у форматов, брейкпоинтов и ответа анализа |
-| Доставка | Один Docker-образ | Stateless. Собрал `client/dist` и `server/dist` — контейнер и отдаёт страницы, и жмёт файлы |
+## What it looks like
 
-Страниц четыре, и HTML для краулера собирается точечной подстановкой в уже собранный SPA. Об этом ниже.
+Upload, crop, and the result are the main path. The fourth frame is a Wikipedia article about JPEG: the HTML had 71 images, and the estimate used the first 40.
 
-## Архитектура
+![Upload: empty queue, formats and quality beside it](docs/images/upload.png)
+
+![Crop: a frame on the uploaded image; the region is sent to the server in source pixels](docs/images/crop.png)
+
+![Result: preview and weight comparison for Optimized, WebP, and AVIF](docs/images/result.png)
+
+![Page analysis: what the images weigh now, and what remains in WebP and AVIF](docs/images/analyze.png)
+
+## Stack
+
+| Part | Choice | Why |
+|------|--------|-----|
+| Images | [Sharp](https://sharp.pixelplumbing.com/) (libvips) | Crop, trim, resize, WebP, and AVIF in one process, without a separate encode service |
+| API and HTML | [Fastify](https://fastify.dev/) | Multipart, static files, and SEO substitution share one listener. In production that is the only process |
+| UI | React 19 and Vite | Crop and queue are client state. The server receives a rectangle in source pixels |
+| Language | TypeScript | Shared contracts for formats, breakpoints, and the analysis response |
+| Delivery | One Docker image | Stateless. Build `client/dist` and `server/dist` — the container serves pages and compresses files |
+
+There are four pages. HTML for crawlers is a targeted substitution into the already built SPA. More on that below.
+
+## Architecture
 
 ```mermaid
 flowchart LR
   ui["React SPA"]
   api["Fastify"]
   sharp["Sharp"]
-  guard["Проверка URL и стрим"]
-  seo["SEO в HTML"]
-  web["Публичные http/https"]
+  guard["URL check and stream"]
+  seo["SEO in HTML"]
+  web["Public http/https"]
 
-  ui -->|"файлы, /api/optimize"| api
+  ui -->|"files, /api/optimize"| api
   ui -->|"URL, /api/analyze-page"| api
-  api -->|"HTML маршрутов"| ui
+  api -->|"route HTML"| ui
   api --> sharp
   api --> guard
   api --> seo
   guard --> web
 ```
 
-В разработке два процесса: Vite на `:5173` проксирует `/api` на Fastify `:3001`. В проде Vite нет: тот же Fastify слушает один порт и отдаёт собранный `client/dist`. Контейнер, переменные и хостинг — в [docs/deploy.md](docs/deploy.md).
+In development there are two processes: Vite on `:5173` proxies `/api` to Fastify on `:3001`. In production there is no Vite. The same Fastify listens on one port, serves the built `client/dist`, and compresses HTML and scripts with Brotli. The container, environment, and hosting are in [docs/deploy.md](docs/deploy.md).
 
-## Что интересного технически
+## What is interesting technically
 
-### SSRF, когда анализ ходит по чужому URL
+### SSRF, when analysis fetches an arbitrary URL
 
-Анализ принимает произвольный адрес и сам качает HTML и картинки. Перед запросом URL нормализуется: только `http` и `https`, без логина и пароля в адресе, без `localhost`, `.localhost` и `.local`. Если хост уже IP, проверяется он. Если это имя, `dns.lookup` с `all: true` возвращает все A/AAAA, и запрос отклоняется, когда хотя бы один адрес частный: loopback, частные диапазоны, link-local `169.254.0.0/16`, CGNAT `100.64.0.0/10`, multicast и зарезервированные, у IPv6 — ULA и link-local.
+Analysis accepts any address and downloads the HTML and images itself. Before the request the URL is normalized: only `http` and `https`, no user or password in the address, no `localhost`, `.localhost`, or `.local`. If the host is already an IP, that IP is checked. If it is a name, `dns.lookup` with `all: true` returns every A/AAAA, and the request is rejected when any address is private: loopback, private ranges, link-local `169.254.0.0/16`, CGNAT `100.64.0.0/10`, multicast and reserved, and for IPv6 ULA and link-local.
 
-Эта проверка происходит раньше, чем открывается сокет. К моменту `connect` имя резолвится ещё раз, и второй ответ может быть уже другим: сначала публичный адрес, затем `127.0.0.1` или адрес из сети хоста. Так устроен DNS rebinding, он же TOCTOU: проверка и соединение видят разные ответы DNS.
+That check happens before a socket is opened. By `connect` the name is resolved again, and the second answer can differ: a public address first, then `127.0.0.1` or an address on the host network. That is DNS rebinding, a TOCTOU: the check and the connection see different DNS answers.
 
-Запрос идёт через свой undici `Agent`, а адрес проверяется внутри `connect.lookup`. Этот callback и резолвит имя, и решает, какой IP получит сокет. Внутренний адрес в любом из A/AAAA превращается в ошибку, и TCP не открывается. Публичный список возвращается как есть: сокет подключается к этим IP, и имя больше не резолвится. Свой `Agent` передаётся в `dispatcher` только этого `fetch`: остальные запросы процесса идут обычным клиентом. Пул может переиспользовать уже открытый сокет — он привязан к проверенному адресу. Новое соединение снова проходит через тот же `lookup`.
+The request goes through its own undici `Agent`, and the address is checked inside `connect.lookup`. That callback both resolves the name and decides which IP the socket gets. A private address in any A/AAAA becomes an error, and TCP is not opened. A public list is returned as-is: the socket connects to those IPs, and the name is not resolved again. The custom `Agent` is passed as `dispatcher` only for this `fetch`. Other requests in the process use the normal client. The pool may reuse an already open socket — it is bound to an address that was checked. A new connection goes through the same `lookup` again.
 
-Ранняя проверка остаётся. Локальные имена и заведомо внутренние адреса получают 400 ещё до сокета.
+The early check stays. Local names and addresses that are already internal get a 400 before any socket.
 
 ```ts
 const agent = new Agent({
@@ -78,13 +103,13 @@ const response = await fetch(url, {
 });
 ```
 
-Редиректы обрабатываются вручную (`redirect: 'manual'`): каждый `Location` проходит раннюю проверку, а новое соединение — тот же `lookup`. Цепочка не длиннее пяти. С одного IP — 8 анализов за 10 минут.
+Redirects are handled manually (`redirect: 'manual'`): each `Location` goes through the early check, and the new connection goes through the same `lookup`. The chain is at most five hops. One IP gets 8 analyses per 10 minutes.
 
-Код: `server/src/analyzePage.ts`.
+Code: `server/src/analyzePage.ts`.
 
-### Стриминг с лимитом размера
+### Streaming with a size limit
 
-Лимит считается по уже прочитанным байтам. Тело идёт чанками, сумма копится, и на превышении чтение отменяется:
+The limit is the bytes already read. The body arrives in chunks, the sum grows, and reading is cancelled when it is exceeded:
 
 ```ts
 const reader = response.body.getReader();
@@ -101,51 +126,51 @@ while (true) {
 }
 ```
 
-HTML страницы — до 2 МБ, одна картинка — до 8 МБ. Сверху таймаут через `AbortController`: 12 секунд на страницу и 10 на файл. В оценке не больше 40 картинок и 6 параллельных загрузок. ZIP с уже оптимизированными файлами ограничен отдельно: 20 картинок, 40 МБ исходников и не больше двух таких сборок сразу. Сама обработка Sharp — не больше двух изображений одновременно: исходник до 30 МБ целиком лежит в памяти, а libvips на каждое берёт один поток.
+Page HTML is capped at 2 MB, one image at 8 MB. An `AbortController` adds a timeout: 12 seconds for a page and 10 for a file. An estimate uses at most 40 images and 6 parallel downloads. A ZIP of already optimized files is limited separately: 20 images, 40 MB of sources, and no more than two such builds at once. Sharp itself processes at most two images at a time: a source up to 30 MB sits entirely in memory, and libvips uses one thread per image.
 
-### Art direction и `<picture>`
+### Art direction and `<picture>`
 
-Брейкпоинты проекта фиксированы: md 768, lg 1024, xl 1280. Для слота загруженный кадр считается картинкой @2x, из него получаются файлы `name-md.avif` и `name-md-2x.avif` — и то же для WebP и исходного формата.
+The project's breakpoints are fixed: md 768, lg 1024, xl 1280. For a slot the uploaded frame is treated as a @2x image, and it produces `name-md.avif` and `name-md-2x.avif` — and the same for WebP and the original format.
 
-`shared/src/pictureMarkup.ts` собирает `<picture>` от узкого диапазона к широкому. Тот же модуль импортируют клиент и сервер. У всех наборов, кроме последнего, есть `media`. Последний без `media` остаётся запасным: браузер доходит до него, если верхние условия не подошли. Внутри диапазона порядок типов один и тот же: AVIF, затем WebP, затем JPEG или PNG. У `img` заданы `width`, `height`, `loading="lazy"` и `decoding="async"`, чтобы слот не прыгал по высоте.
+`shared/src/pictureMarkup.ts` builds `<picture>` from the narrow range to the wide one. The same module is imported by the client and the server. Every set except the last has `media`. The last one has no `media` and stays the fallback: the browser reaches it when the conditions above do not match. Inside a range the type order is the same: AVIF, then WebP, then JPEG or PNG. The `img` has `width`, `height`, `loading="lazy"`, and `decoding="async"`, so the slot does not jump in height.
 
-Тот же порядок брейкпоинтов разобран в гайде на сайте: когда хватает `srcset`, а когда нужен `media`, потому что на узком экране кадр другой, а не просто меньше.
+The same breakpoint order is explained in the on-site guide: when `srcset` is enough, and when `media` is required because the narrow screen shows a different frame, not just a smaller one.
 
-### SEO прямо в HTML, хотя это SPA
+### SEO in the HTML, even though this is an SPA
 
-Маршруты `/`, `/guide`, `/analyze` и `/privacy` — один собранный `index.html`. Краулер и превью ссылки читают первый ответ и не ждут React. Fastify не отдаёт этот файл как есть: метаданные маршрутов лежат в `shared/src/seo.ts`, а `applySeoToHtml` в `server/src/seo.ts` подставляет `title`, description, Open Graph, canonical и JSON-LD под конкретный путь и кладёт внутрь `#root` заголовок, лид и ссылки разделов.
+The routes `/`, `/guide`, `/analyze`, and `/privacy` are one built `index.html`. A crawler and a link preview read the first response and do not wait for React. Fastify does not send that file unchanged: route metadata lives in `shared/src/seo.ts`, and `applySeoToHtml` in `server/src/seo.ts` fills `title`, description, Open Graph, canonical, and JSON-LD for the path, and puts a heading, a lead, and section links inside `#root`.
 
-Блок помечен `data-seo-shell`. В CSS он спрятан клипом, поэтому до гидрации человек не видит вспышку второго заголовка, а клиент без CSS получает обычный текст. После клиентского перехода `useDocumentSeo` обновляет те же теги уже в браузере: смена пути через `history` документ заново не запрашивает.
+The block is marked `data-seo-shell`. It is visible and styled as the page heading, so the first paint does not wait for JavaScript. When React mounts, it replaces `#root`. After a client navigation, `useDocumentSeo` updates the same tags in the browser: a path change through `history` does not request the document again.
 
-Канонический адрес в первом HTML берётся из `PUBLIC_SITE_URL` на каждый запрос. Туда же пишется номер Метрики, `window.__FITPIX_YM_ID__`. Образ можно собрать раньше, чем появится номер счётчика, и подставить его на запуске контейнера.
+The canonical URL in the first HTML comes from `PUBLIC_SITE_URL` on each request. The Metrika counter id is written there too, as `window.__FITPIX_YM_ID__`. The image can be built before the counter id exists, and the id substituted when the container starts.
 
-### Аналитика только после согласия
+### Analytics only after consent
 
-`initYm` в `client/src/analytics/ym.ts` вставляет `https://mc.yandex.ru/metrika/tag.js` только когда в `localStorage` уже лежит `granted`. До этого функция выходит сразу:
+`initYm` in `client/src/analytics/ym.ts` inserts `https://mc.yandex.ru/metrika/tag.js` only when `localStorage` already holds `granted`. Until then the function returns immediately:
 
 ```ts
 if (!hasYmCounter()) return false;
 if (getConsent() !== 'granted') return false;
 ```
 
-`trackPage` и `trackGoal` молчат, пока инициализация не прошла. «Только необходимые» записывает отказ, и скрипт тега в документ не добавляется. Список целей и переменные счётчика — в [docs/analytics.md](docs/analytics.md).
+`trackPage` and `trackGoal` stay silent until initialization has succeeded. "Necessary only" records a refusal, and the tag script is not added to the document. The goal list and counter variables are in [docs/analytics.md](docs/analytics.md).
 
-## Как запустить
+## Run it
 
 ```bash
 npm install
 npm run dev
 ```
 
-Интерфейс — http://localhost:5173, API — http://localhost:3001. Vite проксирует `/api` на бэкенд.
+The UI is at http://localhost:5173, the API at http://localhost:3001. Vite proxies `/api` to the backend.
 
-Docker, SMTP для багрепортов и хостинг — в [docs/deploy.md](docs/deploy.md).
+Docker, SMTP for bug reports, and hosting are in [docs/deploy.md](docs/deploy.md).
 
-## Документация
+## Documentation
 
-- [Деплой, окружение, SMTP, UptimeRobot](docs/deploy.md)
-- [Яндекс.Метрика и цели](docs/analytics.md)
+- [Deploy, environment, SMTP, UptimeRobot](docs/deploy.md)
+- [Yandex Metrika and goals](docs/analytics.md)
 - [HTTP API](docs/api.md)
-- [История версий](CHANGELOG.md)
+- [Changelog](CHANGELOG.md)
 
-Лицензия — [MIT](LICENSE).
+License: [MIT](LICENSE).

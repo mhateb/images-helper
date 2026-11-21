@@ -3,6 +3,35 @@
   background: var(--page);
 }
 
+.skip {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 2000;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-150%);
+}
+
+.skip:focus {
+  transform: none;
+}
+
+.loading,
+.main:focus {
+  outline: none;
+}
+
+.loading {
+  margin: 0;
+  color: var(--muted);
+}
+
 .header {
   display: flex;
   align-items: center;
@@ -268,7 +297,7 @@
   margin: 0;
   padding: 0.85rem 1rem;
   border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
-  background: color-mix(in srgb, var(--danger) 8%, white);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
   color: var(--danger);
   border-radius: var(--radius-sm);
 }

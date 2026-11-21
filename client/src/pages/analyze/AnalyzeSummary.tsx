@@ -52,9 +52,9 @@ function foundHint(result: AnalyzePageResult) {
   if (result.truncated) {
     return (
       <>
-        из‑за ограничений оценили только {ANALYZE_LIMITS.maxAnalyzeImages}
+        оценили первые {ANALYZE_LIMITS.maxAnalyzeImages}
         <br />
-        сразу оптимизируем {ANALYZE_LIMITS.maxZipImages}
+        в архив — до {ANALYZE_LIMITS.maxZipImages}
       </>
     );
   }
@@ -62,7 +62,7 @@ function foundHint(result: AnalyzePageResult) {
     <>
       оценили {result.analyzedCount}
       <br />
-      сразу оптимизируем до {ANALYZE_LIMITS.maxZipImages}
+      в архив — до {ANALYZE_LIMITS.maxZipImages}
     </>
   );
 }
@@ -85,7 +85,7 @@ export function AnalyzeSummary({
   return (
     <>
       <div className={styles.resultsHead}>
-        <p className={styles.resultsTitle}>Результаты анализа: {hostLabel(result.finalUrl)}</p>
+        <p className={styles.resultsTitle}>Результаты: {hostLabel(result.finalUrl)}</p>
         <p className={styles.resultsMeta}>Сканирование завершено</p>
       </div>
 
@@ -145,12 +145,9 @@ export function AnalyzeSummary({
           <div className={styles.zipCopy}>
             <p className={styles.zipTitle}>Скачать оптимизированные WebP</p>
             <p className={styles.zipHint}>
-              Архив в WebP: до {ANALYZE_LIMITS.maxZipImages} картинок с наибольшей экономией
-              {result.analyzedCount > ANALYZE_LIMITS.maxZipImages
-                ? ` (из ${result.analyzedCount} оценённых)`
-                : ''}
-              , не больше {formatBytes(ANALYZE_LIMITS.maxZipSourceBytes)} исходников. Сейчас:{' '}
-              {zipCandidates.length}.
+              В архив попадут картинки с наибольшей экономией: до {ANALYZE_LIMITS.maxZipImages} штук
+              и не больше {formatBytes(ANALYZE_LIMITS.maxZipSourceBytes)} исходников. Сейчас
+              выбрано {zipCandidates.length}.
             </p>
           </div>
           <button

@@ -92,21 +92,14 @@ export async function registerSecurity(app: FastifyInstance): Promise<void> {
         scriptSrcAttr: ["'none'"],
         // Критический CSS, страница 404 и style-атрибуты react-image-crop.
         // Nonce на style-src не ставим: он отменяет 'unsafe-inline'.
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          'https://fonts.googleapis.com',
-          'https://yastatic.net',
-        ],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://yastatic.net'],
         styleSrcAttr: ["'unsafe-inline'"],
-        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://yastatic.net', 'data:'],
+        fontSrc: ["'self'", 'https://yastatic.net', 'data:'],
         imgSrc: ["'self'", 'blob:', 'data:', ...YM_HTTPS],
         connectSrc: [
           "'self'",
           ...YM_HTTPS,
           ...YM_WSS,
-          'https://fonts.googleapis.com',
-          'https://fonts.gstatic.com',
         ],
         // Вебвизор, карта кликов и превью через URL.createObjectURL.
         frameSrc: ['blob:', ...YM_HTTPS],
@@ -116,7 +109,7 @@ export async function registerSecurity(app: FastifyInstance): Promise<void> {
         formAction: ["'self'"],
       },
     },
-    // require-corp оборвал бы шрифты Google и tag.js: у них нет CORP.
+    // require-corp оборвал бы tag.js: у него нет CORP.
     crossOriginEmbedderPolicy: false,
     // same-origin спрятал бы og:image от мессенджеров и превью ссылок.
     crossOriginResourcePolicy: { policy: 'cross-origin' },

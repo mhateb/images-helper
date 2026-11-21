@@ -1,4 +1,4 @@
-import { useState, type MouseEvent } from 'react';
+import { lazy, Suspense, useState, type MouseEvent } from 'react';
 import type { ConsentStatus } from './analytics/consent';
 import { trackGoal, YM_GOALS } from './analytics/ym';
 import { BugReportModal } from './components/BugReportModal';
@@ -6,10 +6,17 @@ import { ConsentBanner } from './components/ConsentBanner';
 import { useDocumentSeo } from './hooks/useDocumentSeo';
 import { usePath } from './hooks/usePath';
 import { useYandexMetrika } from './hooks/useYandexMetrika';
-import { AnalyzePage } from './pages/AnalyzePage';
-import { GuidePage } from './pages/GuidePage';
 import { HomePage } from './pages/HomePage';
-import { PrivacyPage } from './pages/PrivacyPage';
+
+const GuidePage = lazy(() =>
+  import('./pages/GuidePage').then((module) => ({ default: module.GuidePage })),
+);
+const AnalyzePage = lazy(() =>
+  import('./pages/AnalyzePage').then((module) => ({ default: module.AnalyzePage })),
+);
+const PrivacyPage = lazy(() =>
+  import('./pages/PrivacyPage').then((module) => ({ default: module.PrivacyPage })),
+);
 // import { PicturePage } from './pages/PicturePage';
 import styles from './App.module.css';
 
@@ -47,7 +54,11 @@ export default function App() {
   };
 
   return (
-    <div className={styles.page}>
+    <>
+    <div className={styles.page} inert={bugReportOpen ? true : undefined}>
+      <a className={styles.skip} href="#content">
+        К содержанию
+      </a>
       <header className={styles.header}>
         <a
           href="/"
@@ -102,8 +113,6 @@ export default function App() {
         </div>
       </header>
 
-      <BugReportModal open={bugReportOpen} onClose={() => setBugReportOpen(false)} />
-
       {/* {!isGuide ? (
         <div className={styles.modeBar}>
           <div className={styles.modeTabs} role="tablist" aria-label="Режим инструмента">
@@ -129,20 +138,22 @@ export default function App() {
         </div>
       ) : null} */}
 
-      <main className={styles.main}>
-        {isPrivacy ? (
-          <PrivacyPage onNavigate={navigate} />
-        ) : isGuide ? (
-          <GuidePage />
-        ) : isAnalyze ? (
-          <AnalyzePage onNavigate={navigate} />
-        ) : (
-          // toolMode === 'picture' ? (
-          //   <PicturePage />
-          // ) : (
-          <HomePage />
-          // )
-        )}
+      <main id="content" tabIndex={-1} className={styles.main}>
+        <Suspense fallback={<p className={styles.loading}>Загрузка…</p>}>
+          {isPrivacy ? (
+            <PrivacyPage onNavigate={navigate} />
+          ) : isGuide ? (
+            <GuidePage />
+          ) : isAnalyze ? (
+            <AnalyzePage onNavigate={navigate} />
+          ) : (
+            // toolMode === 'picture' ? (
+            //   <PicturePage />
+            // ) : (
+            <HomePage />
+            // )
+          )}
+        </Suspense>
       </main>
 
       <footer className={styles.footer}>
@@ -156,5 +167,7 @@ export default function App() {
         onOpenPrivacy={() => navigate('/privacy')}
       />
     </div>
+    <BugReportModal open={bugReportOpen} onClose={() => setBugReportOpen(false)} />
+    </>
   );
 }

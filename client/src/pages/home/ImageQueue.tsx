@@ -22,14 +22,15 @@ export function ImageQueue({
 
   return (
     <div className={styles.queue}>
-      <div className={styles.queueList} role="list" aria-label="Загруженные изображения">
+      <div className={styles.queueList} aria-label="Загруженные изображения">
         {items.map((item) => (
           <button
             key={item.id}
             type="button"
-            role="listitem"
             className={`${styles.queueItem} ${item.id === activeId ? styles.queueItemActive : ''}`}
             onClick={() => onSelect(item.id)}
+            aria-label={item.file.name}
+            aria-pressed={item.id === activeId}
             title={item.file.name}
           >
             <img src={item.imageUrl} alt="" />
@@ -53,6 +54,8 @@ export function ImageQueue({
           accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
           multiple
           className={styles.hiddenInput}
+          tabIndex={-1}
+          aria-hidden="true"
           onChange={(event) => {
             void onAdd(Array.from(event.target.files ?? []));
             event.target.value = '';

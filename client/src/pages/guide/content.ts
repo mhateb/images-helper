@@ -9,7 +9,7 @@ import type { GuideTab } from './types';
 export const GUIDE_INTRO = {
   kicker: 'Документация',
   title: 'Гайд по оптимизации картинок для веба',
-  lead: `Подготовка ассетов под \`<picture>\` с брейкпоинтами проекта: **md ${BP.md}**, **lg ${BP.lg}**, **xl ${BP.xl}** — и разрешение под реальный слот в вёрстке.`,
+  lead: `Как подготовить картинки под \`<picture>\`: размер под слот в макете и брейкпоинты проекта — **md ${BP.md}**, **lg ${BP.lg}**, **xl ${BP.xl}**.`,
 };
 
 export const GUIDE_TABS: GuideTab[] = [

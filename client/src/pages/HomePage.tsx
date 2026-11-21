@@ -55,8 +55,7 @@ export function HomePage() {
             Онлайн-оптимизация картинок
           </h1>
           <p className={styles.lead}>
-            Сжатие JPEG/PNG, WebP и AVIF, ручная обрезка и автообрезка краёв — бесплатно, без
-            регистрации.
+            Сжатие JPEG и PNG, конвертация в WebP и AVIF, обрезка.
           </p>
         </header>
 

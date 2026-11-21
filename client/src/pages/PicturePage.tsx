@@ -199,8 +199,8 @@ export function PicturePage() {
   return (
     <>
       <p className={appStyles.tagline}>
-        Три брейкпоинта — три кадра: загрузите @2x для <strong>md</strong>,{' '}
-        <strong>lg</strong> и <strong>xl</strong>. Соберём 1x/2x, AVIF/WebP и{' '}
+        Загрузите кадр @2x для каждого брейкпоинта: <strong>md</strong>, <strong>lg</strong> и{' '}
+        <strong>xl</strong>. Мы сделаем файлы 1x и 2x в AVIF и WebP и соберём{' '}
         <code>&lt;picture&gt;</code> с media.
       </p>
 
@@ -280,7 +280,7 @@ export function PicturePage() {
                 {activeSlot ? ` · ${activeSlot.file.name}` : ''}
               </p>
               <p className={appStyles.fileMeta}>
-                Обрезка своя для каждого брейкпоинта. xl обязателен, md/lg — по желанию.
+                У каждого брейкпоинта своя обрезка. xl обязателен, md и lg — по желанию.
               </p>
             </div>
             <button type="button" className={appStyles.reset} onClick={onReset}>
@@ -296,8 +296,8 @@ export function PicturePage() {
                 <div className={appStyles.blockHead}>
                   <h2>Обрезка · {activeToken}</h2>
                   <p>
-                    Рамка только для этого кадра. Цель: {BP[activeToken]}px (1x) и{' '}
-                    {BP[activeToken] * 2}px (2x).
+                    Рамка действует только для этого кадра. Размеры файлов: {BP[activeToken]}px (1x)
+                    и {BP[activeToken] * 2}px (2x).
                   </p>
                 </div>
                 <Cropper
@@ -319,7 +319,7 @@ export function PicturePage() {
               <div className={appStyles.block}>
                 <div className={appStyles.blockHead}>
                   <h2>Обрезка</h2>
-                  <p>Сначала загрузите xl — затем при необходимости md и lg.</p>
+                  <p>Сначала загрузите xl, затем при необходимости md и lg.</p>
                 </div>
               </div>
             )}
@@ -368,9 +368,8 @@ export function PicturePage() {
             <header className={styles.panelHeader}>
               <h2>Арт-директинг</h2>
               <p>
-                У каждого брейкпоинта свой кадр @2x → файлы{' '}
-                <code>-md</code> / <code>-lg</code> / <code>-xl</code> и <code>-2x</code>,
-                разметка с media.
+                Для каждого брейкпоинта получите файлы <code>-md</code>, <code>-lg</code>,{' '}
+                <code>-xl</code> и их версии <code>-2x</code>, а также разметку с media.
               </p>
             </header>
 
@@ -390,7 +389,7 @@ export function PicturePage() {
             <label className={styles.toggleRow}>
               <div>
                 <span className={styles.label}>Trim</span>
-                <p>Автообрезка пустых краёв после ручной обрезки (для каждого кадра).</p>
+                <p>Убрать пустые края после обрезки. Применяется к каждому кадру.</p>
               </div>
               <button
                 type="button"

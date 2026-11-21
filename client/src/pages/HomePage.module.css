@@ -37,6 +37,12 @@
   line-height: 1.45;
 }
 
+.cropLoading {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
 .queue {
   display: flex;
   flex-direction: column;
@@ -58,7 +64,7 @@
   padding: 0;
   border: 2px solid var(--line);
   border-radius: var(--radius-sm);
-  background: #f1f5f9;
+  background: var(--well);
   overflow: hidden;
   cursor: pointer;
   transition:
@@ -86,7 +92,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  border: 1.5px solid white;
+  border: 1.5px solid var(--surface);
 }
 
 .queueDone {
@@ -175,7 +181,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  background: #f1f5f9;
+  background: var(--well);
 }
 
 .thumb img {
@@ -292,7 +298,7 @@
   margin: 0;
   padding: 0.85rem 1rem;
   border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
-  background: color-mix(in srgb, var(--danger) 8%, white);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
   color: var(--danger);
   border-radius: var(--radius-sm);
 }

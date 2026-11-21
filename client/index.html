@@ -6,12 +6,13 @@
     <title>Fitpix.ru — онлайн-оптимизация картинок: WebP, AVIF, обрезка и сжатие</title>
     <meta
       name="description"
-      content="Бесплатный инструмент для оптимизации изображений: сжатие JPEG/PNG, конвертация в WebP и AVIF, ручная обрезка и автообрезка краёв. До 20 файлов за раз, без регистрации."
+      content="Сжатие JPEG и PNG, конвертация в WebP и AVIF, обрезка. До 20 файлов за раз, бесплатно и без регистрации."
     />
     <meta name="robots" content="index,follow" />
     <meta name="application-name" content="Fitpix.ru" />
-    <meta name="theme-color" content="#0f172a" />
-    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
     <link rel="canonical" href="https://fitpix.ru/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
@@ -26,7 +27,7 @@
     />
     <meta
       property="og:description"
-      content="Бесплатный инструмент для оптимизации изображений: сжатие JPEG/PNG, конвертация в WebP и AVIF, ручная обрезка и автообрезка краёв. До 20 файлов за раз, без регистрации."
+      content="Сжатие JPEG и PNG, конвертация в WebP и AVIF, обрезка. До 20 файлов за раз, бесплатно и без регистрации."
     />
     <meta property="og:url" content="https://fitpix.ru/" />
     <meta property="og:image" content="https://fitpix.ru/og-image.jpg" />
@@ -41,7 +42,7 @@
     />
     <meta
       name="twitter:description"
-      content="Бесплатный инструмент для оптимизации изображений: сжатие JPEG/PNG, конвертация в WebP и AVIF, ручная обрезка и автообрезка краёв. До 20 файлов за раз, без регистрации."
+      content="Сжатие JPEG и PNG, конвертация в WebP и AVIF, обрезка. До 20 файлов за раз, бесплатно и без регистрации."
     />
     <meta name="twitter:image" content="https://fitpix.ru/og-image.jpg" />
 
@@ -54,7 +55,7 @@
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "Any",
         "inLanguage": "ru",
-        "description": "Бесплатный инструмент для оптимизации изображений: сжатие JPEG/PNG, конвертация в WebP и AVIF, ручная обрезка и автообрезка краёв. До 20 файлов за раз, без регистрации.",
+        "description": "Сжатие JPEG и PNG, конвертация в WebP и AVIF, обрезка. До 20 файлов за раз, бесплатно и без регистрации.",
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -63,31 +64,63 @@
       }
     </script>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <!-- Critical: hide SEO shell before React mounts to avoid flash on refresh -->
+    <!-- First paint: heading is visible before React replaces #root -->
     <style>
+      html {
+        color-scheme: light dark;
+      }
       html,
       body {
         margin: 0;
         min-height: 100%;
         background: #fafafa;
         color: #0f172a;
+        font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        html,
+        body {
+          background: #0b1220;
+          color: #e2e8f0;
+        }
+        [data-seo-shell] p {
+          color: #cbd5e1;
+        }
+        [data-seo-shell] a {
+          color: #a5b4fc;
+        }
       }
       [data-seo-shell] {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border: 0;
+        box-sizing: border-box;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 80px clamp(1rem, 4vw, 2.5rem) 0;
+      }
+      [data-seo-shell] h1 {
+        margin: 0;
+        font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+      }
+      [data-seo-shell] p {
+        margin: 0.35rem 0 0;
+        max-width: 42rem;
+        color: #475569;
+        font-size: 1.125rem;
+        line-height: 1.45;
+      }
+      [data-seo-shell] nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 1.25rem;
+        margin-top: 1rem;
+      }
+      [data-seo-shell] a {
+        color: #4f46e5;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
       }
     </style>
   </head>
@@ -96,8 +129,7 @@
       <div data-seo-shell>
         <h1>Онлайн-оптимизация картинок для веба</h1>
         <p>
-          Сжимайте JPEG и PNG, конвертируйте в WebP и AVIF, обрезайте и убирайте
-          лишние поля — бесплатно и без регистрации.
+          Сжимайте JPEG и PNG, конвертируйте в WebP и AVIF, обрезайте картинки.
         </p>
         <nav aria-label="Разделы">
           <a href="/">Инструмент</a>

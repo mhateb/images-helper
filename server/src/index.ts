@@ -2,6 +2,7 @@ import './sharpLimit.js';
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import cors from '@fastify/cors';
+import compress from '@fastify/compress';
 import multipart from '@fastify/multipart';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { HOST, MAX_FILE_SIZE, PORT, TRUST_PROXY } from './config.js';
@@ -41,6 +42,11 @@ export async function buildApp(options?: { logger?: FastifyServerOptions['logger
   attachLogger(app);
 
   await registerSecurity(app);
+  await app.register(compress, {
+    global: true,
+    threshold: 1024,
+    encodings: ['br', 'gzip'],
+  });
 
   await app.register(cors, {
     origin: true,

@@ -74,7 +74,7 @@ export function OptionsPanel({
   })();
 
   return (
-    <aside className={`${styles.panel} ${disabled ? styles.disabled : ''}`}>
+    <aside className={styles.panel}>
       <header className={styles.header}>
         <h2>Настройки оптимизации</h2>
         <p>Точная настройка размера и качества</p>
@@ -117,6 +117,7 @@ export function OptionsPanel({
           type="button"
           role="switch"
           aria-checked={trim}
+          aria-label="Обрезать пустое пространство"
           className={`${styles.switch} ${trim ? styles.on : ''}`}
           onClick={() => onTrimChange(!trim)}
           disabled={disabled}
@@ -138,6 +139,7 @@ export function OptionsPanel({
             type="button"
             role="switch"
             aria-checked={resize}
+            aria-label="Уменьшить ширину"
             className={`${styles.switch} ${resize ? styles.on : ''}`}
             onClick={() => onResizeChange(!resize)}
             disabled={disabled}
@@ -182,6 +184,7 @@ export function OptionsPanel({
           max={100}
           step={1}
           value={quality}
+          aria-label="Качество вывода"
           onChange={(e) => onQualityChange(Number(e.target.value))}
           disabled={disabled}
         />

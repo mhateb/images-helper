@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type SyntheticEvent } from 'react';
 import ReactCrop, {
   centerCrop,
   type Crop,
@@ -13,6 +13,8 @@ interface CropperProps {
   initialCrop?: CropArea;
   onCropChange: (crop: CropArea) => void;
 }
+
+const MIN_PERCENT = 5;
 
 function toNaturalCrop(
   percentCrop: PercentCrop,
@@ -41,15 +43,56 @@ function toPercentCrop(
   };
 }
 
+function nudge(crop: Crop, key: string, resize: boolean): PercentCrop {
+  const step = resize ? 5 : 1;
+  let { x, y, width, height } = crop;
+  if (resize) {
+    if (key === 'ArrowRight') width += step;
+    if (key === 'ArrowLeft') width -= step;
+    if (key === 'ArrowDown') height += step;
+    if (key === 'ArrowUp') height -= step;
+  } else {
+    if (key === 'ArrowLeft') x -= step;
+    if (key === 'ArrowRight') x += step;
+    if (key === 'ArrowUp') y -= step;
+    if (key === 'ArrowDown') y += step;
+  }
+  width = Math.min(100, Math.max(MIN_PERCENT, width));
+  height = Math.min(100, Math.max(MIN_PERCENT, height));
+  x = Math.min(Math.max(0, x), 100 - width);
+  y = Math.min(Math.max(0, y), 100 - height);
+  return { unit: '%', x, y, width, height };
+}
+
+function cropAnnouncement(crop: PercentCrop): string {
+  return `Рамка ${Math.round(crop.width)} на ${Math.round(crop.height)} процентов`;
+}
+
 export function Cropper({ imageUrl, initialCrop, onCropChange }: CropperProps) {
   const imgRef = useRef<HTMLImageElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const initialCropRef = useRef(initialCrop);
   initialCropRef.current = initialCrop;
+  const hintId = useId();
   const [crop, setCrop] = useState<Crop>();
+  const [announcement, setAnnouncement] = useState('');
 
   useEffect(() => {
     setCrop(undefined);
+    setAnnouncement('');
   }, [imageUrl]);
+
+  useEffect(() => {
+    const root = stageRef.current;
+    if (!root) return;
+    root
+      .querySelectorAll(
+        '.ReactCrop__drag-elements, .ReactCrop__rule-of-thirds-hz, .ReactCrop__rule-of-thirds-vt, .ReactCrop__crop-selection',
+      )
+      .forEach((el) => {
+        el.setAttribute('aria-hidden', 'true');
+      });
+  }, [crop]);
 
   const emitCrop = useCallback(
     (percentCrop: PercentCrop) => {
@@ -68,19 +111,44 @@ export function Cropper({ imageUrl, initialCrop, onCropChange }: CropperProps) {
     (e: SyntheticEvent<HTMLImageElement>) => {
       const { width, height, naturalWidth, naturalHeight } = e.currentTarget;
       const saved = initialCropRef.current;
-      const next =
+      const frame = centerCrop({ unit: '%', width: 100, height: 100 }, width, height);
+      const next: PercentCrop =
         saved && saved.width > 0 && saved.height > 0
           ? toPercentCrop(saved, naturalWidth, naturalHeight)
-          : centerCrop({ unit: '%', width: 100, height: 100 }, width, height);
+          : {
+              unit: '%',
+              x: frame.x,
+              y: frame.y,
+              width: frame.width,
+              height: frame.height,
+            };
       setCrop(next);
+      setAnnouncement(cropAnnouncement(next));
       onCropChange(toNaturalCrop(next, naturalWidth, naturalHeight));
     },
     [onCropChange],
   );
 
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!crop || crop.unit !== '%' || !event.key.startsWith('Arrow')) return;
+    event.preventDefault();
+    const next = nudge(crop, event.key, event.shiftKey);
+    setCrop(next);
+    setAnnouncement(cropAnnouncement(next));
+    emitCrop(next);
+  };
+
   return (
     <div className={styles.root}>
-      <div className={styles.stage}>
+      <div
+        ref={stageRef}
+        className={styles.stage}
+        role="group"
+        tabIndex={0}
+        aria-label="Область обрезки"
+        aria-describedby={hintId}
+        onKeyDown={onKeyDown}
+      >
         <ReactCrop
           className={styles.crop}
           crop={crop}
@@ -99,8 +167,14 @@ export function Cropper({ imageUrl, initialCrop, onCropChange }: CropperProps) {
             className={styles.image}
           />
         </ReactCrop>
+        <p className="sr-only" aria-live="polite">
+          {announcement}
+        </p>
       </div>
-      <p className={styles.hint}>Тяните края и углы рамки или перетаскивайте её целиком.</p>
+      <p id={hintId} className={styles.hint}>
+        Тяните края и углы рамки или двигайте её целиком. С клавиатуры: стрелки двигают рамку,
+        Shift со стрелками меняет размер.
+      </p>
     </div>
   );
 }

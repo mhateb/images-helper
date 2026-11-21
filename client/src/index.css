@@ -1,26 +1,33 @@
 :root {
-  --font-display: 'Inter', 'Segoe UI', sans-serif;
-  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --font-display: Inter, 'Segoe UI', system-ui, sans-serif;
+  --font-body: Inter, 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --ink: #0f172a;
   --muted: #475569;
-  --muted-soft: #94a3b8;
-  --accent: #6366f1;
-  --accent-strong: #4f46e5;
+  --muted-soft: #5b677a;
+  --accent: #4f46e5;
+  --accent-strong: #4338ca;
   --accent-soft: #eef2ff;
   --accent-ink: #ffffff;
   --surface: #ffffff;
   --page: #fafafa;
   --line: #e2e8f0;
-  --success: #10b981;
+  --success: #047857;
   --success-soft: #ecfdf5;
-  --danger: #dc2626;
+  --danger: #b91c1c;
+  --well: #f1f5f9;
+  --well-2: #f8fafc;
+  --checker: #e2e8f0;
+  --track: #cbd5e1;
+  --track-border: #64748b;
+  --knob: #ffffff;
   --radius: 12px;
   --radius-sm: 8px;
   --radius-xs: 6px;
   --header-h: 72px;
   color: var(--ink);
   background: var(--page);
+  color-scheme: light dark;
   font-family: var(--font-body);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -28,6 +35,31 @@
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.45;
   font-weight: 400;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e2e8f0;
+    --muted: #cbd5e1;
+    --muted-soft: #94a3b8;
+    --accent: #a5b4fc;
+    --accent-strong: #c7d2fe;
+    --accent-soft: #1e1b4b;
+    --accent-ink: #1e1b4b;
+    --surface: #111827;
+    --page: #0b1220;
+    --line: #334155;
+    --success: #6ee7b7;
+    --success-soft: #064e3b;
+    --danger: #fca5a5;
+    --well: #1e293b;
+    --well-2: #0f172a;
+    --checker: #334155;
+    --track: #334155;
+    --track-border: #94a3b8;
+    --knob: #ffffff;
+    color-scheme: dark;
+  }
 }
 
 *,
@@ -45,23 +77,52 @@ body,
 body {
   margin: 0;
   background: var(--page);
+  color: var(--ink);
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
+  color: inherit;
 }
 
 button:focus-visible,
+a:focus-visible,
 [role='button']:focus-visible,
 [role='switch']:focus-visible,
 [role='radio']:focus-visible,
 [role='tab']:focus-visible,
-input:focus-visible {
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 img {
   display: block;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

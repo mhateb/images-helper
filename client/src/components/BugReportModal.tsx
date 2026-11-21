@@ -10,9 +10,25 @@ type BugReportModalProps = {
   onClose: () => void;
 };
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([hidden]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function focusableIn(root: HTMLElement): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => {
+    if (el.hasAttribute('hidden')) return false;
+    if (el.getAttribute('aria-hidden') === 'true') return false;
+    return el.tabIndex >= 0;
+  });
+}
+
 export function BugReportModal({ open, onClose }: BugReportModalProps) {
   const titleId = useId();
+  const descriptionId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const [description, setDescription] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
@@ -21,21 +37,57 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
   const [success, setSuccess] = useState(false);
   const [sending, setSending] = useState(false);
 
+  const sendingRef = useRef(sending);
+  sendingRef.current = sending;
+
   useEffect(() => {
     if (!open) return;
 
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = window.requestAnimationFrame(() => {
+      descriptionRef.current?.focus();
+    });
+
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !sending) onClose();
+      if (event.key === 'Escape') {
+        if (sendingRef.current) return;
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const items = focusableIn(dialog);
+      if (items.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !dialog.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
-    window.addEventListener('keydown', onKey);
+
+    document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     return () => {
-      window.removeEventListener('keydown', onKey);
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
+      previouslyFocused?.focus();
     };
-  }, [open, onClose, sending]);
+  }, [open]);
 
   useEffect(() => {
     if (!screenshot) {
@@ -115,15 +167,18 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
       }}
     >
       <div
+        ref={dialogRef}
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        tabIndex={-1}
       >
         <div className={styles.head}>
           <div>
             <h2 id={titleId}>Сообщить о проблеме</h2>
-            <p>Кратко опишите, что случилось. Скриншот очень поможет.</p>
+            <p id={descriptionId}>Кратко опишите, что случилось. Скриншот очень поможет.</p>
           </div>
           <button
             type="button"
@@ -140,6 +195,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
           <label className={styles.field}>
             <span className={styles.label}>Что произошло</span>
             <textarea
+              ref={descriptionRef}
               className={styles.textarea}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
@@ -185,6 +241,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
               type="file"
               accept={ACCEPT}
               hidden
+              aria-label="Скриншот"
               onChange={(event) => onPickFile(event.target.files?.[0])}
             />
             {previewUrl ? (
@@ -198,6 +255,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
                     if (fileRef.current) fileRef.current.value = '';
                   }}
                   disabled={sending || success}
+                  aria-label="Убрать скриншот"
                 >
                   Убрать
                 </button>
@@ -205,8 +263,16 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
             ) : null}
           </div>
 
-          {error ? <p className={styles.error}>{error}</p> : null}
-          {success ? <p className={styles.success}>Спасибо! Сообщение отправлено.</p> : null}
+          {error ? (
+            <p className={styles.error} role="alert">
+              {error}
+            </p>
+          ) : null}
+          {success ? (
+            <p className={styles.success} role="status">
+              Спасибо! Сообщение отправлено.
+            </p>
+          ) : null}
 
           <div className={styles.actions}>
             <button

@@ -1,12 +1,12 @@
 # client
 
-Интерфейс Fitpix: React и Vite.
+Fitpix UI: React and Vite.
 
-Приложение запускается из корня монорепозитория. Как оно устроено и зачем — в [README](../README.md).
+Run the app from the monorepo root. How it is built and why is in the [README](../README.md).
 
 ```bash
 npm install
 npm run dev
 ```
 
-Отдельно этот пакет не деплоится. В проде Fastify отдаёт собранный `client/dist`.
+This package is not deployed on its own. In production Fastify serves the built `client/dist`.

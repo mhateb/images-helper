@@ -61,9 +61,10 @@ describe('security headers', () => {
     expect(sources(scriptSrc)).not.toContain('https:');
 
     expect(styleSrc).toContain("'unsafe-inline'");
-    expect(styleSrc).toContain('https://fonts.googleapis.com');
+    expect(styleSrc).not.toContain('fonts.googleapis.com');
     expect(sources(styleSrc)).not.toContain('https:');
-    expect(directive(csp, 'font-src')).toContain('https://fonts.gstatic.com');
+    expect(directive(csp, 'font-src')).toContain("'self'");
+    expect(directive(csp, 'font-src')).not.toContain('fonts.gstatic.com');
     expect(sources(directive(csp, 'img-src'))).toContain('blob:');
     expect(connectSrc).toContain('wss://mc.yandex.ru');
     expect(directive(csp, 'frame-src')).toContain('blob:');

@@ -1,7 +1,11 @@
-import { Cropper } from '../../components/Cropper';
+import { lazy, Suspense } from 'react';
 import type { CropArea } from '../../types';
 import type { ImageItem } from './imageItem';
 import styles from '../HomePage.module.css';
+
+const Cropper = lazy(() =>
+  import('../../components/Cropper').then((module) => ({ default: module.Cropper })),
+);
 
 export function CropBlock({
   item,
@@ -17,17 +21,18 @@ export function CropBlock({
       <div className={styles.blockHead}>
         <h2>Обрезка</h2>
         <p>
-          Потяните границы рамки — выделенная область отправится на сервер первой, затем
-          автообрезка краёв.
-          {multiple ? ' Для каждой картинки своя область.' : ''}
+          Выделите нужную область. Сначала сервер обрежет её, затем уберёт пустые края.
+          {multiple ? ' У каждой картинки своя рамка.' : ''}
         </p>
       </div>
-      <Cropper
-        key={item.id}
-        imageUrl={item.imageUrl}
-        initialCrop={item.crop}
-        onCropChange={onCropChange}
-      />
+      <Suspense fallback={<p className={styles.cropLoading}>Загрузка редактора…</p>}>
+        <Cropper
+          key={item.id}
+          imageUrl={item.imageUrl}
+          initialCrop={item.crop}
+          onCropChange={onCropChange}
+        />
+      </Suspense>
     </div>
   );
 }

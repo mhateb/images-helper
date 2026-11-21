@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type DragEvent } from 'react';
+import { useCallback, useId, useRef, useState, type DragEvent } from 'react';
 import { MAX_FILE_BYTES, MAX_FILE_MB, MAX_FILES } from 'shared';
 import styles from './Dropzone.module.css';
 
@@ -27,6 +27,7 @@ export function Dropzone({
   compact = false,
 }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const errorId = useId();
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,7 +75,7 @@ export function Dropzone({
     [multiple, onFiles],
   );
 
-  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+  const onDrop = (event: DragEvent<HTMLLabelElement>) => {
     event.preventDefault();
     setDragging(false);
     handleFiles(event.dataTransfer.files, 'drop');
@@ -82,7 +83,7 @@ export function Dropzone({
 
   return (
     <div className={styles.wrap}>
-      <div
+      <label
         className={`${styles.zone} ${compact ? styles.compact : ''} ${dragging ? styles.dragging : ''}`}
         onDragEnter={(e) => {
           e.preventDefault();
@@ -97,15 +98,6 @@ export function Dropzone({
           setDragging(false);
         }}
         onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            inputRef.current?.click();
-          }
-        }}
       >
         <input
           ref={inputRef}
@@ -113,20 +105,29 @@ export function Dropzone({
           accept={ACCEPT}
           multiple={multiple}
           className={styles.input}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
           onChange={(e) => {
             handleFiles(e.target.files, 'picker');
             e.target.value = '';
           }}
         />
-        <div className={styles.iconWrap} aria-hidden>
+        <span className={styles.iconWrap} aria-hidden="true">
           <img src="/icons/cloud-upload.svg" alt="" width={24} height={24} />
-        </div>
-        <div className={styles.text}>
-          <p className={styles.title}>{title}</p>
-          <p className={styles.hint}>{hint}</p>
-        </div>
-      </div>
-      {error ? <p className={styles.error}>{error}</p> : null}
+        </span>
+        <span className={styles.text}>
+          <span className={styles.title}>{title}</span>
+          <span className={styles.hint}>{hint}</span>
+        </span>
+      </label>
+      <p className="sr-only" aria-live="polite">
+        {dragging ? 'Отпустите файлы, чтобы загрузить' : ''}
+      </p>
+      {error ? (
+        <p id={errorId} className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -16,7 +16,7 @@
   padding: 0.95rem 1.1rem;
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--accent-soft) 70%, white);
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface));
 }
 
 .batchText {
@@ -43,7 +43,7 @@
   border: none;
   border-radius: var(--radius-xs);
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
@@ -104,7 +104,7 @@
 .download {
   border: none;
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
 }
 
 .downloadAll {
@@ -133,11 +133,11 @@
   min-height: 220px;
   padding: 1rem;
   background:
-    linear-gradient(45deg, #e2e8f0 25%, transparent 25%) 0 0 / 16px 16px,
-    linear-gradient(-45deg, #e2e8f0 25%, transparent 25%) 0 8px / 16px 16px,
-    linear-gradient(45deg, transparent 75%, #e2e8f0 75%) 8px -8px / 16px 16px,
-    linear-gradient(-45deg, transparent 75%, #e2e8f0 75%) -8px 0 / 16px 16px,
-    #f8fafc;
+    linear-gradient(45deg, var(--checker) 25%, transparent 25%) 0 0 / 16px 16px,
+    linear-gradient(-45deg, var(--checker) 25%, transparent 25%) 0 8px / 16px 16px,
+    linear-gradient(45deg, transparent 75%, var(--checker) 75%) 8px -8px / 16px 16px,
+    linear-gradient(-45deg, transparent 75%, var(--checker) 75%) -8px 0 / 16px 16px,
+    var(--well-2);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
@@ -159,7 +159,7 @@
   flex-direction: column;
   gap: 0.2rem;
   padding: 0.7rem 0.8rem;
-  background: #f8fafc;
+  background: var(--well-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
 }
@@ -222,7 +222,7 @@
   padding: 0.5rem 0.8rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
-  background: white;
+  background: var(--surface);
   color: var(--ink);
   font-weight: 600;
   font-size: 0.8125rem;
